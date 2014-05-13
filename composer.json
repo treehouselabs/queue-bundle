@@ -1,0 +1,34 @@
+{
+  "name": "treehouselabs/queue-bundle",
+  "type": "symfony-bundle",
+  "description": "Symfony2 bundle for message queue",
+  "keywords": ["mq","message queue","message","queue","amqp","rabbitmq","worker","pubsub"],
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Peter Kruithof",
+      "email": "peter@treehouse.nl"
+    }
+  ],
+  "minimum-stability": "stable",
+  "require": {
+    "php": ">=5.5",
+    "psr/log": "~1.0",
+    "symfony/symfony": "~2.3",
+    "symfony/monolog-bundle": "~2.4",
+    "treehouselabs/queue": "dev-master"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "~4.0",
+    "behat/behat": "~3.0",
+    "symfony/proxy-manager-bridge": "~2.4",
+    "ocramius/proxy-manager": "~0.5",
+    "empi89/php-amqp-stubs": "dev-master",
+    "behat/symfony2-extension": "2.0.*@dev"
+  },
+  "autoload": {
+    "psr-4": {
+      "TreeHouse\\QueueBundle\\": "src/TreeHouse/QueueBundle/"
+    }
+  }
+}

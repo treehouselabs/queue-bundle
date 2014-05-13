@@ -1,0 +1,7 @@
+tree_house_queue:
+  connections:
+    conn1:
+      host: localhost
+    conn2:
+      host: rabbitmqhost
+      port: 123

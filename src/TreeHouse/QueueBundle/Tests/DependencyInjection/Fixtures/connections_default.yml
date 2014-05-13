@@ -1,0 +1,5 @@
+tree_house_queue:
+  default_connection: conn2
+  connections:
+    conn1: localhost
+    conn2: rabbitmqhost

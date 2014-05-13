@@ -1,0 +1,71 @@
+tree_house_queue:
+  driver: amqp
+  default_connection: conn1
+  connections:
+    conn1: localhost
+    conn2:
+      host: rabbitmqhost
+      port: 123
+      user: foo_user
+      pass: foo_pass
+      vhost: /foo
+
+  publishers:
+    process1: ~
+      #serializer: php
+      #exchange: direct
+      #composer_class: %tree_house.queue.composer.default.class%
+    process2:
+      serializer: json
+      exchange:
+        type: topic
+        connection: conn2
+        passive: true
+        arguments:
+          x-ha-policy: all
+
+  consumers:
+    process1:
+      processor: TreeHouse\Queue\Processor\RetryProcessor
+      #attempts: 3
+    process2:
+      processor: TreeHouse\Queue\Processor\RetryProcessor
+      attempts: 5
+      queue:
+        connection: conn2
+        durable: false
+        passive: true
+        exclusive: true
+        auto_delete: true
+        binding:
+          exchange: xchg1
+          routing_key: foo
+
+  queues:
+    q1:
+      arguments:
+        x-match: all
+      binding:
+        exchange: xchg1
+        routing_keys:
+          - foo
+          - bar
+    q2:
+      connection: conn2
+      durable: false
+      passive: true
+      exclusive: true
+      auto_delete: true
+      bindings:
+        -
+          exchange: xchg1
+          routing_keys:
+            - foo
+            - bar
+          arguments:
+            x-foo: bar
+        -
+          exchange: xchg2
+          routing_key: foo
+          arguments:
+            x-foo: bar

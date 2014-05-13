@@ -1,0 +1,3 @@
+tree_house_queue:
+  connection:
+    host: localhost
