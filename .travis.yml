@@ -8,7 +8,6 @@ php:
   - 5.6
 
 install:
-  - pecl install amqp
   - composer self-update
 
 before_script:
