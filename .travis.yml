@@ -11,9 +11,7 @@ install:
   - composer self-update
 
 before_script:
-  - sudo rabbitmqctl status
   - echo "extension = amqp.so" >> ~/.phpenv/versions/$(phpenv version-name)/etc/php.ini
-  - php -i
   - composer install --no-interaction
 
 script:
