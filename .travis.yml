@@ -11,6 +11,8 @@ install:
   - composer self-update
 
 before_script:
+  - rabbitmqctl status
+  - php -i
   - composer install --no-interaction
 
 script:
