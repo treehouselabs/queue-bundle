@@ -43,6 +43,7 @@ tree_house_queue:
 
   queues:
     q1:
+      name: q1
       arguments:
         x-match: all
       binding:
@@ -51,6 +52,7 @@ tree_house_queue:
           - foo
           - bar
     q2:
+      name: ~
       connection: conn2
       durable: false
       passive: true
