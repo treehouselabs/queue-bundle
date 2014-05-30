@@ -260,7 +260,20 @@ class TreeHouseQueueExtension extends Extension
         // TODO lazy
 //        $definition->setLazy(true);
 
+        if (empty($queue['bindings'])) {
+            // bind to the same exchange
+            $queue['bindings'][] = [
+                'exchange'     => $name,
+                'routing_keys' => [],
+                'arguments'    => [],
+            ];
+        }
+
         foreach ($queue['bindings'] as $binding) {
+            if (empty($binding['routing_keys'])) {
+                $binding['routing_keys'] = [null];
+            }
+
             foreach ($binding['routing_keys'] as $routingKey) {
                 $definition->addMethodCall('bind', [$binding['exchange'], $routingKey, $binding['arguments']]);
             }
