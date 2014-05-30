@@ -328,6 +328,19 @@ class FeatureContext implements SnippetAcceptingContext
     }
 
     /**
+     * @Then I should have an unnamed queue for :name
+     */
+    public function iShouldHaveAnUnnamedQueue($name)
+    {
+        $id = sprintf('tree_house.queue.queue.%s', $name);
+        Assert::assertTrue($this->container->has($id));
+
+        $queue = $this->getQueue($name);
+        Assert::assertInstanceOf($this->container->getParameter('tree_house.queue.queue.class'), $queue);
+        Assert::assertRegExp('#amq\.gen\-.*#', $queue->getName());
+    }
+
+    /**
      * @Then I should have a queue named :name
      */
     public function iShouldHaveAQueueNamed($name)
@@ -337,6 +350,7 @@ class FeatureContext implements SnippetAcceptingContext
 
         $queue = $this->getQueue($name);
         Assert::assertInstanceOf($this->container->getParameter('tree_house.queue.queue.class'), $queue);
+        Assert::assertEquals($name, $queue->getName());
     }
 
     /**

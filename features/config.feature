@@ -77,6 +77,11 @@ Feature: config
 
       tree_house_queue:
         connection: localhost
+        publishers:
+          process1:
+            exchange: direct
+          pubsub:
+            exchange: fanout
         consumers:
           process1:
             processor: TreeHouse\FunctionalTestBundle\Queue\Processor\TestProcessor
@@ -89,15 +94,17 @@ Feature: config
               auto_delete: true
       """
     When I build the container
-    Then I should have a consumer named "process1"
+    Then I should have an exchange named "process1"
+    And I should have a consumer named "process1"
     And the "process1" consumer should process using the "TreeHouse\FunctionalTestBundle\Queue\Processor\TestProcessor" class
 #    And the "process1" consumer should get 3 attempts
-    And I should have a queue named "process1"
+    And I should have an unnamed queue for "process1"
     And the "process1" queue should be durable
+    And I should have an exchange named "pubsub"
     And I should have a consumer named "pubsub"
     And the "pubsub" consumer should process using the "test_processor" service
 #    And the "pubsub" consumer should get 1 attempt
-    And I should have a queue named "pubsub"
+    And I should have an unnamed queue for "pubsub"
     And the "pubsub" queue should not be durable
     And the "pubsub" queue should be exclusive
     And the "pubsub" queue should auto-delete
@@ -107,17 +114,22 @@ Feature: config
       """
       tree_house_queue:
         connection: localhost
+        publishers:
+          pubsub1:
+            exchange: fanout
         queues:
           pubsub1:
+            name: pubsub1
             durable: false
             passive: false
             exclusive: true
             auto_delete: true
             bindings:
-              exchange: pubsub
+              exchange: pubsub1
       """
     When I build the container
-    Then I should have a queue named "pubsub1"
+    Then I should have an exchange named "pubsub1"
+    And I should have a queue named "pubsub1"
     And the "pubsub1" queue should not be durable
     And the "pubsub1" queue should not be passive
     And the "pubsub1" queue should be exclusive
