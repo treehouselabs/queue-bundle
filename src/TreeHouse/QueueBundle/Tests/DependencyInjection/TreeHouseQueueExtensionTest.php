@@ -242,7 +242,7 @@ class TreeHouseQueueExtensionTest extends \PHPUnit_Framework_TestCase
         $queue = $container->getDefinition('tree_house.queue.queue.q2');
 
         $this->assertEquals('tree_house.queue.channel.conn2', (string) $queue->getArgument(0));
-        $this->assertEquals('q2', $queue->getArgument(1));
+        $this->assertEquals(null, $queue->getArgument(1));
         $this->assertEquals(AMQP_PASSIVE | AMQP_EXCLUSIVE | AMQP_AUTODELETE, $queue->getArgument(2));
         $this->assertEquals([], $queue->getArgument(3));
         $this->assertEquals(

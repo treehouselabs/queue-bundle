@@ -22,10 +22,6 @@
     <server name="KERNEL_DIR" value="./tests/app"/>
   </php>
 
-  <logging>
-    <log type="coverage-text" target="php://stdout"/>
-  </logging>
-
   <filter>
     <whitelist>
       <directory suffix=".php">./src</directory>

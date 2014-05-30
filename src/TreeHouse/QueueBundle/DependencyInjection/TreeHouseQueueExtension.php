@@ -254,7 +254,7 @@ class TreeHouseQueueExtension extends Extension
         $definition->setFactoryService('tree_house.queue.factory');
         $definition->setFactoryMethod('createQueue');
         $definition->addArgument(new Reference($channelId));
-        $definition->addArgument($name);
+        $definition->addArgument($queue['name']);
         $definition->addArgument($this->getQueueFlagsValue($queue));
         $definition->addArgument($queue['arguments']);
         // TODO lazy
