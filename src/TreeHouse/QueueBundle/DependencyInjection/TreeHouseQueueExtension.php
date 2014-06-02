@@ -8,7 +8,6 @@ use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
 use Symfony\Component\DependencyInjection\Reference;
 use Symfony\Component\HttpKernel\DependencyInjection\Extension;
-use TreeHouse\Queue\Processor\RetryProcessor;
 
 class TreeHouseQueueExtension extends Extension
 {

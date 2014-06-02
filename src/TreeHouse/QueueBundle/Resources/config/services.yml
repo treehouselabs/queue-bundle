@@ -19,3 +19,6 @@ services:
     class: %tree_house.queue.serializer.php.class%
   tree_house.queue.serializer.json:
     class: %tree_house.queue.serializer.json.class%
+  tree_house.queue.serializer.doctrine:
+    class: %tree_house.queue.serializer.doctrine.class%
+    arguments: [@doctrine]
