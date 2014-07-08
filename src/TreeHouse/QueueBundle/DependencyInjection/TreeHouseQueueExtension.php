@@ -27,6 +27,10 @@ class TreeHouseQueueExtension extends Extension
         $this->loadPublishers($config, $container);
         $this->loadConsumers($config, $container);
         $this->loadQueues($config, $container);
+
+        if (!$config['auto_flush']) {
+            $container->removeDefinition('tree_house.queue.event_listener.queue');
+        }
    }
 
     /**

@@ -25,6 +25,10 @@ class Configuration implements ConfigurationInterface
                         ->thenInvalid('Driver for php-amqplib is not yet implemented')
                     ->end()
                 ->end()
+                ->booleanNode('auto_flush')
+                    ->defaultTrue()
+                    ->info('Whether to automatically flush the Doctrine object manager when processing messages')
+                ->end()
             ->end()
         ;
 
