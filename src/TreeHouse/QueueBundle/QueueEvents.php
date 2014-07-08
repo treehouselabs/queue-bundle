@@ -5,13 +5,8 @@ namespace TreeHouse\QueueBundle;
 final class QueueEvents
 {
     /**
-     * Dispatched when the worker needs to flush. This typically occurs after a
-     * batch completes during the run command, or when a single job is finished.
+     * Dispatched when the consumer needs to flush. This typically occurs after a
+     * batch completes during the consume command, or when a single message is processed.
      */
-    const FLUSH        = 'queue.flush';
-
-    /**
-     * Dispatched when the run command terminates
-     */
-    const RUN_TERMINATE = 'queue.run.terminate';
+    const FLUSH = 'queue.flush';
 }

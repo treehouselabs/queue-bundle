@@ -11,6 +11,8 @@ parameters:
   tree_house.queue.serializer.doctrine.class: TreeHouse\Queue\Message\Serializer\DoctrineSerializer
   tree_house.queue.composer.default.class: TreeHouse\Queue\Message\Composer\DefaultMessageComposer
   tree_house.queue.consumer.class: TreeHouse\Queue\Consumer
+  tree_house.queue.event_listener.flush.class: TreeHouse\QueueBundle\EventListener\FlushListener
+  tree_house.queue.flusher.doctrine.class: TreeHouse\QueueBundle\Flusher\DoctrineFlusher
 
 services:
   tree_house.queue.driver.amqp.factory:
@@ -22,3 +24,11 @@ services:
   tree_house.queue.serializer.doctrine:
     class: %tree_house.queue.serializer.doctrine.class%
     arguments: [@doctrine]
+  tree_house.queue.event_listener.queue:
+    class: %tree_house.queue.event_listener.flush.class%
+    tags:
+      - { name: kernel.event_listener, event: queue.flush, method: onFlush }
+  tree_house.queue.flusher.doctrine_abstract:
+    abstract: true
+    public: false
+    class: %tree_house.queue.flusher.doctrine.class%
