@@ -14,7 +14,7 @@ tree_house_queue:
     process1: ~
       #serializer: php
       #exchange: direct
-      #composer_class: %tree_house.queue.composer.default.class%
+      #composer: %tree_house.queue.composer.default.class%
     process2:
       serializer: json
       exchange:

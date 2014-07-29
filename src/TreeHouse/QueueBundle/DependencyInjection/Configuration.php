@@ -151,7 +151,7 @@ EOF
                                 ->end()
                             ->end()
 
-                            ->scalarNode('composer_class')
+                            ->scalarNode('composer')
                                 ->defaultValue('%tree_house.queue.composer.default.class%')
                             ->end()
 

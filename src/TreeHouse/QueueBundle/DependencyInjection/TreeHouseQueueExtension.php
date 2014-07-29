@@ -142,24 +142,8 @@ class TreeHouseQueueExtension extends Extension
                 $container->setAlias(sprintf('tree_house.queue.channel.%s', $name), $channelId);
             }
 
-            // message serializer
-            $serializerId = sprintf('tree_house.queue.serializer.%s', $name);
-            if (substr($publisher['serializer'], 0, 1) === '@') {
-                $container->setAlias($serializerId, ltrim($publisher['serializer'], '@'));
-            } else {
-                $serializer = new Definition($publisher['serializer']);
-                $container->setDefinition($serializerId, $serializer);
-            }
-
-            // message composer
-            $composerId = sprintf('tree_house.queue.composer.%s', $name);
-            $composerClass = $publisher['composer_class'];
-            if (substr($composerClass, 0, 1) === '%') {
-                $composerClass = $container->getParameter(substr($composerClass, 1, -1));
-            }
-            $composer = new Definition($composerClass);
-            $composer->addArgument(new Reference($serializerId));
-            $container->setDefinition($composerId, $composer);
+            // create message composer
+            $composerId = $this->createMessageComposerDefinition($container, $name, $publisher);
 
             // create publisher
             $publisherId = sprintf('tree_house.queue.publisher.%s', $name);
@@ -334,5 +318,61 @@ class TreeHouseQueueExtension extends Extension
         }
 
         return $flags;
+    }
+
+    /**
+     * @param ContainerBuilder $container
+     * @param string           $name
+     * @param array            $publisher
+     *
+     * @return string
+     */
+    protected function createMessageComposerDefinition(ContainerBuilder $container, $name, array $publisher)
+    {
+        $composerId = sprintf('tree_house.queue.composer.%s', $name);
+        $composer   = $publisher['composer'];
+
+        // resolve service
+        if (substr($composer, 0, 1) === '@') {
+            $container->setAlias($composerId, ltrim($composer, '@'));
+        } else {
+            // resolve parameter
+            if (substr($composer, 0, 1) === '%') {
+                $composer = $container->getParameter(substr($composer, 1, -1));
+            }
+
+            // create serializer first
+            $serializerId = $this->createMessageSerializerDefinition($container, $name, $publisher['serializer']);
+
+            $composerDef = new Definition($composer);
+            $composerDef->addArgument(new Reference($serializerId));
+            $container->setDefinition($composerId, $composerDef);
+        }
+
+        return $composerId;
+    }
+
+    /**
+     * @param ContainerBuilder $container
+     * @param string           $name
+     * @param string           $serializerClass
+     *
+     * @return string
+     */
+    protected function createMessageSerializerDefinition(ContainerBuilder $container, $name, $serializerClass)
+    {
+        $serializerId = sprintf('tree_house.queue.serializer.%s', $name);
+
+        // resolve service
+        if (substr($serializerClass, 0, 1) === '@') {
+            $container->setAlias($serializerId, ltrim($serializerClass, '@'));
+
+            return $serializerId;
+        } else {
+            $serializer = new Definition($serializerClass);
+            $container->setDefinition($serializerId, $serializer);
+
+            return $serializerId;
+        }
     }
 }
