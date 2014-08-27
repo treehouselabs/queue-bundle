@@ -84,7 +84,6 @@ class TreeHouseQueueExtension extends Extension
             $definition->setFactoryService('tree_house.queue.factory');
             $definition->setFactoryMethod('createChannel');
             $definition->addArgument(new Reference($connectionId));
-            $definition->setPublic(false);
             // TODO lazy
 //            $definition->setLazy(true);
 
@@ -118,15 +117,21 @@ class TreeHouseQueueExtension extends Extension
     {
         foreach ($config['publishers'] as $name => $publisher) {
             // get the right channel for the exchange
-            $exchange = $publisher['exchange'];
-            $connection = $exchange['connection'] ?: $container->getParameter('tree_house.queue.default_connection');
-            $channelId = sprintf('tree_house.queue.channel.%s', $connection);
+            $exchange     = $publisher['exchange'];
+            $connection   = $exchange['connection'] ? : $container->getParameter('tree_house.queue.default_connection');
+            $channelId    = sprintf('tree_house.queue.channel.%s', $connection);
+            $channelAlias = sprintf('tree_house.queue.channel.%s', $name);
+
+            // add alias if connection is named differently than exchange
+            if ($name !== $connection) {
+                $container->setAlias($channelAlias, $channelId);
+            }
 
             // create exchange
             $definition = new Definition($container->getParameter('tree_house.queue.exchange.class'));
             $definition->setFactoryService('tree_house.queue.factory');
             $definition->setFactoryMethod('createExchange');
-            $definition->addArgument(new Reference($channelId));
+            $definition->addArgument(new Reference($channelAlias));
             $definition->addArgument($name);
             $definition->addArgument($exchange['type']);
             $definition->addArgument($this->getExchangeFlagsValue($exchange));
@@ -136,11 +141,6 @@ class TreeHouseQueueExtension extends Extension
 
             $exchangeId = sprintf('tree_house.queue.exchange.%s', $name);
             $container->setDefinition($exchangeId, $definition);
-
-            // add alias if connection is named differently than exchange
-            if ($name !== $connection) {
-                $container->setAlias(sprintf('tree_house.queue.channel.%s', $name), $channelId);
-            }
 
             // create message composer
             $composerId = $this->createMessageComposerDefinition($container, $name, $publisher);
@@ -162,7 +162,7 @@ class TreeHouseQueueExtension extends Extension
     protected function loadConsumers(array $config, ContainerBuilder $container)
     {
         foreach ($config['consumers'] as $name => $consumer) {
-            // get the right channel for the queue
+            // load the queue
             $queue = $consumer['queue'];
             $queueId = $this->loadQueue($name, $queue, $container);
 
