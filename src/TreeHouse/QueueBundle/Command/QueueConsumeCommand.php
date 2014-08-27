@@ -8,6 +8,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use TreeHouse\Queue\Message\Provider\MessageProviderInterface;
+use TreeHouse\Queue\Message\Serializer\SerializerInterface;
 use TreeHouse\Queue\Processor\ProcessorInterface;
 use TreeHouse\QueueBundle\QueueEvents;
 
@@ -38,8 +39,8 @@ class QueueConsumeCommand extends ContainerAwareCommand
 
         $this->output = $output;
 
-        $provider  = $this->getMessageProvider($name);
-        $processor = $this->getProcessor($name);
+        $provider   = $this->getMessageProvider($name);
+        $processor  = $this->getProcessor($name);
 
         $this->output(sprintf('Consuming from <info>%s</info> queue', $name));
 
@@ -49,13 +50,21 @@ class QueueConsumeCommand extends ContainerAwareCommand
         $processed = 0;
         while (true) {
             if (null !== $message = $provider->get()) {
-                if ($processor->process($message)) {
+                $res = $processor->process($message);
+                if ($res === true) {
                     $provider->ack($message);
-
-                    $body = json_decode($message->getBody(), true);
-                    $output->writeln(sprintf('Merged vacancy <info>%d</info>', $body['id']));
+                    $output->writeln(sprintf('Processed payload <info>%s</info>', $message->getBody()));
                 } else {
                     $output->writeln('<error>Something went wrong</error>');
+
+                    if (!is_bool($res)) {
+                        $output->writeln(
+                            sprintf(
+                                '<error>Did you forget to return a boolean value in the %s processor?</error>',
+                                get_class($processor)
+                            )
+                        );
+                    }
                 }
 
                 // see if batch is completed
