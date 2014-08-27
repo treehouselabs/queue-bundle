@@ -7,8 +7,8 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use TreeHouse\Queue\Message\Message;
 use TreeHouse\Queue\Message\Provider\MessageProviderInterface;
-use TreeHouse\Queue\Message\Serializer\SerializerInterface;
 use TreeHouse\Queue\Processor\ProcessorInterface;
 use TreeHouse\QueueBundle\QueueEvents;
 
@@ -19,6 +19,9 @@ class QueueConsumeCommand extends ContainerAwareCommand
      */
     protected $output;
 
+    /**
+     * @inheritdoc
+     */
     protected function configure()
     {
         $this->setName('queue:consume');
@@ -26,16 +29,21 @@ class QueueConsumeCommand extends ContainerAwareCommand
         $this->addOption('batch-size', 'b', InputOption::VALUE_OPTIONAL, 'Batch size', 50);
         $this->addOption('limit', 'l', InputOption::VALUE_OPTIONAL, 'Maximum number of messages to consume. Set to 0 for indefinite consuming.', 0);
         $this->addOption('max-memory', 'm', InputOption::VALUE_OPTIONAL, 'Maximum amount of memory to use (in MB). The consumer will try to stop before this limit is reached. Set to 0 for indefinite consuming.', 0);
+        $this->addOption('max-time', 't', InputOption::VALUE_OPTIONAL, 'Maximum execution time in seconds. Set to 0 for indefinite consuming', 0);
         $this->addOption('wait', 'w', InputOption::VALUE_OPTIONAL, 'Time in microseconds to wait before polling the next message', 10000);
     }
 
+    /**
+     * @inheritdoc
+     */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         $name      = $input->getArgument('queue');
-        $batchSize = $input->getOption('batch-size');
-        $wait      = $input->getOption('wait');
-        $limit     = $input->getOption('limit');
-        $maxMemory = $input->getOption('max-memory') * 1024 * 1024;
+        $batchSize = intval($input->getOption('batch-size'));
+        $wait      = intval($input->getOption('wait'));
+        $limit     = intval($input->getOption('limit'));
+        $maxMemory = intval($input->getOption('max-memory')) * 1024 * 1024;
+        $maxTime   = intval($input->getOption('max-time'));
 
         $this->output = $output;
 
@@ -53,7 +61,11 @@ class QueueConsumeCommand extends ContainerAwareCommand
                 $res = $processor->process($message);
                 if ($res === true) {
                     $provider->ack($message);
-                    $output->writeln(sprintf('Processed payload <info>%s</info>', $message->getBody()));
+
+                    $output->writeln(
+                        sprintf('Processed payload <info>%s</info>', $this->getPayloadOutput($message, 20)),
+                        OutputInterface::VERBOSITY_VERBOSE
+                    );
                 } else {
                     $output->writeln('<error>Something went wrong</error>');
 
@@ -84,6 +96,15 @@ class QueueConsumeCommand extends ContainerAwareCommand
                 if (($maxMemory > 0) && memory_get_usage(true) > $maxMemory) {
                     $this->output(
                         sprintf('Memory peak of %dMB reached', $maxMemory / 1024 / 1024),
+                        OutputInterface::VERBOSITY_VERBOSE
+                    );
+
+                    break;
+                }
+
+                if (($maxTime > 0) && ((time() - $start) > $maxTime)) {
+                    $this->output(
+                        sprintf('Maximum execution time of %ds reached', $maxTime),
                         OutputInterface::VERBOSITY_VERBOSE
                     );
 
@@ -124,7 +145,7 @@ class QueueConsumeCommand extends ContainerAwareCommand
     }
 
     /**
-     * @param $name
+     * @param string $name
      *
      * @return ProcessorInterface
      */
@@ -134,7 +155,7 @@ class QueueConsumeCommand extends ContainerAwareCommand
     }
 
     /**
-     *
+     * Dispatches flush event
      */
     protected function flush()
     {
@@ -154,5 +175,23 @@ class QueueConsumeCommand extends ContainerAwareCommand
         }
 
         $this->output->writeln($message);
+    }
+
+    /**
+     * @param Message $message
+     * @param integer $offset
+     *
+     * @return string
+     */
+    protected function getPayloadOutput(Message $message, $offset = 0)
+    {
+        $payload = $message->getBody();
+
+        $width = (int) $this->getApplication()->getTerminalDimensions()[0] - $offset;
+        if ($width > 0 && mb_strwidth($payload, 'utf8') > $width) {
+            $payload = mb_substr($payload, 0, $width - 3) . '...';
+        }
+
+        return $payload;
     }
 }
