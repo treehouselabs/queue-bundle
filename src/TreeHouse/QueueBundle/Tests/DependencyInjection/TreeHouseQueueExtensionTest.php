@@ -183,7 +183,7 @@ class TreeHouseQueueExtensionTest extends \PHPUnit_Framework_TestCase
 
         /** @var Reference $channel */
         $channel = $exchange->getArgument(0);
-        $this->assertEquals('tree_house.queue.channel.conn2', (string) $channel);
+        $this->assertEquals('tree_house.queue.channel.process2', (string) $channel);
 
         // also test that an alias to this channel is created for our exchange name
         $this->assertTrue($container->hasAlias('tree_house.queue.channel.process2'));
