@@ -181,8 +181,8 @@ class TreeHouseQueueExtension extends Extension
                 if ($consumer['attempts'] > 1) {
                     $retry = new Definition(RetryProcessor::class);
                     $retry->addArgument(new Reference($serviceId));
-                    $retry->addArgument(new Reference(sprintf('tree_house.queue.provider.%s', $name)));
-                    $retry->addArgument(new Reference('logger'));
+                    $retry->addArgument(new Reference(sprintf('tree_house.queue.publisher.%s', $name)));
+                    $retry->addArgument(new Reference('logger', $container::NULL_ON_INVALID_REFERENCE));
                     $retry->addMethodCall('setMaxAttempts', [$consumer['attempts']]);
                     $container->setDefinition($processorId, $retry);
                 } else {
@@ -196,6 +196,7 @@ class TreeHouseQueueExtension extends Extension
                     $retry = new Definition(RetryProcessor::class);
                     $retry->addArgument($processor);
                     $retry->addArgument(new Reference(sprintf('tree_house.queue.provider.%s', $name)));
+                    $retry->addArgument(new Reference('logger', $container::NULL_ON_INVALID_REFERENCE));
                     $retry->addMethodCall('setMaxAttempts', [$consumer['attempts']]);
                     $container->setDefinition($processorId, $retry);
                 } else {
