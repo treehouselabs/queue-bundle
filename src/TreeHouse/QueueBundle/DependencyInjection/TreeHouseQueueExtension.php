@@ -8,6 +8,7 @@ use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
 use Symfony\Component\DependencyInjection\Reference;
 use Symfony\Component\HttpKernel\DependencyInjection\Extension;
+use TreeHouse\Queue\Processor\RetryProcessor;
 
 class TreeHouseQueueExtension extends Extension
 {
@@ -177,28 +178,29 @@ class TreeHouseQueueExtension extends Extension
 
             if (substr($consumer['processor'], 0, 1) === '@') {
                 $serviceId = ltrim($consumer['processor'], '@');
-//                if ($consumer['attempts'] > 1) {
-//                    $retry = new Definition(RetryProcessor::class);
-//                    $retry->addArgument(new Reference($serviceId));
-//                    $retry->addArgument(new Reference(sprintf('tree_house.queue.publisher.%s', $name)));
-//                    $retry->addMethodCall('setMaxAttempts', [$consumer['attempts']]);
-//                    $container->setDefinition($processorId, $retry);
-//                } else {
+                if ($consumer['attempts'] > 1) {
+                    $retry = new Definition(RetryProcessor::class);
+                    $retry->addArgument(new Reference($serviceId));
+                    $retry->addArgument(new Reference(sprintf('tree_house.queue.provider.%s', $name)));
+                    $retry->addArgument(new Reference('logger'));
+                    $retry->addMethodCall('setMaxAttempts', [$consumer['attempts']]);
+                    $container->setDefinition($processorId, $retry);
+                } else {
                     $container->setAlias($processorId, $serviceId);
-//                }
+                }
             } else {
-//                if ($consumer['attempts'] > 1) {
-//                    $processor = new Definition($consumer['processor']);
-//                    $processor->setPublic(false);
-//
-//                    $retry = new Definition(RetryProcessor::class);
-//                    $retry->addArgument($processor);
-//                    $retry->addArgument(new Reference(sprintf('tree_house.queue.publisher.%s', $name)));
-//                    $retry->addMethodCall('setMaxAttempts', [$consumer['attempts']]);
-//                    $container->setDefinition($processorId, $retry);
-//                } else {
+                if ($consumer['attempts'] > 1) {
+                    $processor = new Definition($consumer['processor']);
+                    $processor->setPublic(false);
+
+                    $retry = new Definition(RetryProcessor::class);
+                    $retry->addArgument($processor);
+                    $retry->addArgument(new Reference(sprintf('tree_house.queue.provider.%s', $name)));
+                    $retry->addMethodCall('setMaxAttempts', [$consumer['attempts']]);
+                    $container->setDefinition($processorId, $retry);
+                } else {
                     $container->setDefinition($processorId, new Definition($consumer['processor']));
-//                }
+                }
             }
 
             // create the consumer
