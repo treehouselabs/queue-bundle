@@ -2,11 +2,14 @@
 
 namespace TreeHouse\QueueBundle\Command;
 
+use Symfony\Bridge\Monolog\Handler\ConsoleHandler;
 use Symfony\Bundle\FrameworkBundle\Command\ContainerAwareCommand;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
+use Symfony\Component\Console\Logger\ConsoleLogger;
 use Symfony\Component\Console\Output\OutputInterface;
+use TreeHouse\Queue\Log\LoggerAggregate;
 use TreeHouse\Queue\Message\Message;
 use TreeHouse\Queue\Message\Provider\MessageProviderInterface;
 use TreeHouse\Queue\Processor\ProcessorInterface;
@@ -58,25 +61,32 @@ class QueueConsumeCommand extends ContainerAwareCommand
         $processed = 0;
         while (true) {
             if (null !== $message = $provider->get()) {
+                $output->writeln(
+                    sprintf('<comment>[%s]</comment> Processing payload <info>%s</info>', $message->getId(), $this->getPayloadOutput($message, 20)),
+                    OutputInterface::VERBOSITY_VERBOSE
+                );
+
                 $res = $processor->process($message);
+
                 if ($res === true) {
                     $provider->ack($message);
 
                     $output->writeln(
-                        sprintf('Processed payload <info>%s</info>', $this->getPayloadOutput($message, 20)),
+                        sprintf('<comment>[%s]</comment> process <info>successful</info>', $message->getId()),
+                        OutputInterface::VERBOSITY_VERBOSE
+                    );
+                } elseif ($res === false) {
+                    $output->writeln(
+                        sprintf('<comment>[%s]</comment> process <error>unsuccessful</error>', $message->getId()),
                         OutputInterface::VERBOSITY_VERBOSE
                     );
                 } else {
-                    $output->writeln('<error>Something went wrong</error>');
-
-                    if (!is_bool($res)) {
-                        $output->writeln(
-                            sprintf(
-                                '<error>Did you forget to return a boolean value in the %s processor?</error>',
-                                get_class($processor)
-                            )
-                        );
-                    }
+                    throw new \LogicException(
+                        sprintf(
+                            '<error>Did you forget to return a boolean value in the %s processor?</error>',
+                            get_class($processor)
+                        )
+                    );
                 }
 
                 // see if batch is completed
@@ -112,7 +122,7 @@ class QueueConsumeCommand extends ContainerAwareCommand
                 }
             }
 
-            $this->output(sprintf('Sleeping for %dms', $wait / 1000), OutputInterface::VERBOSITY_DEBUG);
+            // cool down
             usleep($wait);
         }
 
