@@ -65,7 +65,7 @@ class FeatureContext implements SnippetAcceptingContext
     /**
      * @BeforeSuite
      */
-    public static function setup(BeforeSuiteScope $scope)
+    public static function setup()
     {
         require_once __DIR__ . '/../../tests/bootstrap.php';
     }

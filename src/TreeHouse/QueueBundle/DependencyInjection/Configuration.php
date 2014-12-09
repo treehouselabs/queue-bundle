@@ -266,7 +266,7 @@ EOF
                             ->end()
 
                             ->scalarNode('attempts')
-                                ->defaultValue(3)
+                                ->defaultValue(2)
                                 ->validate()
                                     ->ifTrue(function ($value) {
                                         return !($value > 0);
