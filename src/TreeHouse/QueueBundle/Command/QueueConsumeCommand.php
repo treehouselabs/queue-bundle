@@ -61,8 +61,10 @@ class QueueConsumeCommand extends ContainerAwareCommand
         $processed = 0;
         while (true) {
             if (null !== $message = $provider->get()) {
-                $output->writeln(
-                    sprintf('<comment>[%s]</comment> Processing payload <info>%s</info>', $message->getId(), $this->getPayloadOutput($message, 20)),
+                $payload = $output->isDebug() ? $message->getBody() : $this->getPayloadOutput($message, 20);
+
+                $this->output(
+                    sprintf('<comment>[%s]</comment> Processing payload <info>%s</info>', $message->getId(), $payload),
                     OutputInterface::VERBOSITY_VERBOSE
                 );
 
@@ -71,12 +73,12 @@ class QueueConsumeCommand extends ContainerAwareCommand
                 if ($res === true) {
                     $provider->ack($message);
 
-                    $output->writeln(
+                    $this->output(
                         sprintf('<comment>[%s]</comment> process <info>successful</info>', $message->getId()),
                         OutputInterface::VERBOSITY_VERBOSE
                     );
                 } elseif ($res === false) {
-                    $output->writeln(
+                    $this->output(
                         sprintf('<comment>[%s]</comment> process <error>unsuccessful</error>', $message->getId()),
                         OutputInterface::VERBOSITY_VERBOSE
                     );
