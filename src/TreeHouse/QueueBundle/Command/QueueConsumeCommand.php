@@ -61,10 +61,8 @@ class QueueConsumeCommand extends ContainerAwareCommand
         $processed = 0;
         while (true) {
             if (null !== $message = $provider->get()) {
-                $payload = $output->isDebug() ? $message->getBody() : $this->getPayloadOutput($message, 20);
-
                 $this->output(
-                    sprintf('<comment>[%s]</comment> Processing payload <info>%s</info>', $message->getId(), $payload),
+                    sprintf('<comment>[%s]</comment> Processing payload <info>%s</info>', $message->getId(), $this->getPayloadOutput($message, 20, $output->isDebug())),
                     OutputInterface::VERBOSITY_VERBOSE
                 );
 
@@ -192,12 +190,17 @@ class QueueConsumeCommand extends ContainerAwareCommand
     /**
      * @param Message $message
      * @param integer $offset
+     * @param bool    $fullPayload
      *
      * @return string
      */
-    protected function getPayloadOutput(Message $message, $offset = 0)
+    protected function getPayloadOutput(Message $message, $offset = 0, $fullPayload = false)
     {
         $payload = $message->getBody();
+
+        if ($fullPayload === true) {
+            return $payload;
+        }
 
         $width = (int) $this->getApplication()->getTerminalDimensions()[0] - $offset;
         if ($width > 0 && mb_strwidth($payload, 'utf8') > $width) {
