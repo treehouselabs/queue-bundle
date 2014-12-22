@@ -2,7 +2,6 @@
 
 use Behat\Behat\Context\SnippetAcceptingContext;
 use Behat\Gherkin\Node\PyStringNode;
-use Behat\Testwork\Hook\Scope\BeforeSuiteScope;
 use PHPUnit_Framework_Assert as Assert;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
@@ -11,7 +10,7 @@ use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBag;
 use TreeHouse\Queue\Message\Message;
 use TreeHouse\Queue\Message\Publisher\MessagePublisherInterface;
-use TreeHouse\Queue\Processor\RetryProcessor;
+use TreeHouse\Queue\Processor\Retry\RetryProcessor;
 use TreeHouse\QueueBundle\DependencyInjection\TreeHouseQueueExtension;
 
 /**
@@ -67,7 +66,7 @@ class FeatureContext implements SnippetAcceptingContext
      */
     public static function setup()
     {
-        require_once __DIR__ . '/../../tests/bootstrap.php';
+        require_once __DIR__.'/../../tests/bootstrap.php';
     }
 
     /**
@@ -129,12 +128,21 @@ class FeatureContext implements SnippetAcceptingContext
     }
 
     /**
-     * @When I publish a message with payload :payload to the :xchg exchange
+     * @When I publish a message with payload :payload
      */
-    public function iPublishAMessageWithBodyToTheExchange($payload, $xchg)
+    public function iPublishAMessageWithPayload($payload)
     {
         $this->message = $this->publisher->createMessage($payload);
-        $this->published = $this->publisher->publish($this->message, $xchg);
+        $this->published = $this->publisher->publish($this->message);
+    }
+
+    /**
+     * @When I publish a message with payload :payload to the :xchg exchange
+     */
+    public function iPublishAMessageWithPayloadToTheExchange($payload, $xchg)
+    {
+        $this->aMessagePublisherFor($xchg);
+        $this->iPublishAMessageWithPayload($payload);
     }
 
     /**
