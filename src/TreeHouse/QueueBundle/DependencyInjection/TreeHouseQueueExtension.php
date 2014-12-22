@@ -8,7 +8,8 @@ use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
 use Symfony\Component\DependencyInjection\Reference;
 use Symfony\Component\HttpKernel\DependencyInjection\Extension;
-use TreeHouse\Queue\Processor\RetryProcessor;
+use TreeHouse\Queue\Processor\Retry\BackoffStrategy;
+use TreeHouse\Queue\Processor\Retry\RetryProcessor;
 
 class TreeHouseQueueExtension extends Extension
 {
@@ -32,7 +33,7 @@ class TreeHouseQueueExtension extends Extension
         if (!$config['auto_flush']) {
             $container->removeDefinition('tree_house.queue.event_listener.queue');
         }
-   }
+    }
 
     /**
      * @param array            $config
@@ -119,7 +120,7 @@ class TreeHouseQueueExtension extends Extension
         foreach ($config['publishers'] as $name => $publisher) {
             // get the right channel for the exchange
             $exchange     = $publisher['exchange'];
-            $connection   = $exchange['connection'] ? : $container->getParameter('tree_house.queue.default_connection');
+            $connection   = $exchange['connection'] ?: $container->getParameter('tree_house.queue.default_connection');
             $channelId    = sprintf('tree_house.queue.channel.%s', $connection);
             $channelAlias = sprintf('tree_house.queue.channel.%s', $name);
 
@@ -179,9 +180,13 @@ class TreeHouseQueueExtension extends Extension
             if (substr($consumer['processor'], 0, 1) === '@') {
                 $serviceId = ltrim($consumer['processor'], '@');
                 if ($consumer['attempts'] > 1) {
+                    $strategy = new Definition(BackoffStrategy::class);
+                    $strategy->addArgument(new Reference(sprintf('tree_house.queue.publisher.%s', $name)));
+                    $strategy->setPublic(false);
+
                     $retry = new Definition(RetryProcessor::class);
                     $retry->addArgument(new Reference($serviceId));
-                    $retry->addArgument(new Reference(sprintf('tree_house.queue.provider.%s', $name)));
+                    $retry->addArgument($strategy);
                     $retry->addArgument(new Reference('logger', $container::NULL_ON_INVALID_REFERENCE));
                     $retry->addMethodCall('setMaxAttempts', [$consumer['attempts']]);
                     $container->setDefinition($processorId, $retry);
@@ -190,12 +195,16 @@ class TreeHouseQueueExtension extends Extension
                 }
             } else {
                 if ($consumer['attempts'] > 1) {
+                    $strategy = new Definition(BackoffStrategy::class);
+                    $strategy->addArgument(new Reference(sprintf('tree_house.queue.publisher.%s', $name)));
+                    $strategy->setPublic(false);
+
                     $processor = new Definition($consumer['processor']);
                     $processor->setPublic(false);
 
                     $retry = new Definition(RetryProcessor::class);
                     $retry->addArgument($processor);
-                    $retry->addArgument(new Reference(sprintf('tree_house.queue.provider.%s', $name)));
+                    $retry->addArgument($strategy);
                     $retry->addArgument(new Reference('logger', $container::NULL_ON_INVALID_REFERENCE));
                     $retry->addMethodCall('setMaxAttempts', [$consumer['attempts']]);
                     $container->setDefinition($processorId, $retry);
@@ -236,7 +245,7 @@ class TreeHouseQueueExtension extends Extension
      */
     protected function loadQueue($name, array $queue, ContainerBuilder $container)
     {
-        $connection = $queue['connection'] ? : $container->getParameter('tree_house.queue.default_connection');
+        $connection = $queue['connection'] ?: $container->getParameter('tree_house.queue.default_connection');
         $channelId  = sprintf('tree_house.queue.channel.%s', $connection);
 
         // create queue

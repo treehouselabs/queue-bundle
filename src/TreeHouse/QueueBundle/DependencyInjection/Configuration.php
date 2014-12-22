@@ -136,7 +136,7 @@ EOF
                         ->addDefaultsIfNotSet()
                         ->children()
                             ->scalarNode('serializer')
-                                ->defaultValue('php')
+                                ->defaultValue('@tree_house.queue.serializer.php')
                                 ->beforeNormalization()
                                     ->ifInArray(['php', 'json', 'doctrine'])
                                     ->then(function ($value) {

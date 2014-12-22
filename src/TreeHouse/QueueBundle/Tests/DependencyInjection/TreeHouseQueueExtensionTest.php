@@ -4,10 +4,11 @@ namespace TreeHouse\QueueBundle\Tests\DependencyInjection;
 
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\Dumper\PhpDumper;
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBag;
 use Symfony\Component\DependencyInjection\Reference;
-use TreeHouse\Queue\Processor\RetryProcessor;
+use TreeHouse\Queue\Processor\Retry\RetryProcessor;
 use TreeHouse\QueueBundle\DependencyInjection\TreeHouseQueueExtension;
 
 class TreeHouseQueueExtensionTest extends \PHPUnit_Framework_TestCase
