@@ -17,17 +17,23 @@ parameters:
 services:
   tree_house.queue.driver.amqp.factory:
     class: %tree_house.queue.driver.amqp.factory.class%
+
   tree_house.queue.serializer.php:
     class: %tree_house.queue.serializer.php.class%
+
   tree_house.queue.serializer.json:
     class: %tree_house.queue.serializer.json.class%
+
   tree_house.queue.serializer.doctrine:
     class: %tree_house.queue.serializer.doctrine.class%
-    arguments: [@doctrine]
+    arguments:
+      - @doctrine
+
   tree_house.queue.event_listener.queue:
     class: %tree_house.queue.event_listener.flush.class%
     tags:
       - { name: kernel.event_listener, event: queue.flush, method: onFlush }
+
   tree_house.queue.flusher.doctrine_abstract:
     abstract: true
     public: false
