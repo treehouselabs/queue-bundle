@@ -2,14 +2,11 @@
 
 namespace TreeHouse\QueueBundle\Command;
 
-use Symfony\Bridge\Monolog\Handler\ConsoleHandler;
 use Symfony\Bundle\FrameworkBundle\Command\ContainerAwareCommand;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
-use Symfony\Component\Console\Logger\ConsoleLogger;
 use Symfony\Component\Console\Output\OutputInterface;
-use TreeHouse\Queue\Log\LoggerAggregate;
 use TreeHouse\Queue\Message\Message;
 use TreeHouse\Queue\Message\Provider\MessageProviderInterface;
 use TreeHouse\Queue\Processor\ProcessorInterface;
@@ -62,7 +59,11 @@ class QueueConsumeCommand extends ContainerAwareCommand
         while (true) {
             if (null !== $message = $provider->get()) {
                 $this->output(
-                    sprintf('<comment>[%s]</comment> Processing payload <info>%s</info>', $message->getId(), $this->getPayloadOutput($message, 20, $output->isDebug())),
+                    sprintf(
+                        '<comment>[%s]</comment> Processing payload <info>%s</info>',
+                        $message->getId(),
+                        $this->getPayloadOutput($message, 20, $output->getVerbosity() > $output::VERBOSITY_VERBOSE)
+                    ),
                     OutputInterface::VERBOSITY_VERBOSE
                 );
 

@@ -8,6 +8,7 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use TreeHouse\Queue\Message\Message;
 use TreeHouse\Queue\Message\Publisher\MessagePublisherInterface;
 
 class QueuePublishCommand extends ContainerAwareCommand
@@ -55,7 +56,7 @@ HELP
             $message = $publisher->createMessage($payload);
             $publisher->publish($message);
 
-            $output->writeln(sprintf('Published message for payload <info>%s</info>', json_encode($payload)));
+            $this->notify($output, $message, json_encode($payload));
 
             return 0;
         }
@@ -65,11 +66,12 @@ HELP
 
             /** @var AbstractQuery $query */
             $query = $manager->createQuery($dql);
-            foreach ($query->iterate() as list ($entity)) {
+            foreach ($query->iterate() as list($entity)) {
                 $message = $publisher->createMessage($entity);
                 $publisher->publish($message);
 
-                $output->writeln(sprintf('Published message for entity <info>%s</info>', $this->entityToString($entity)));
+                $this->notify($output, $message, $this->entityToString($entity));
+
                 $manager->detach($entity);
             }
 
@@ -97,11 +99,25 @@ HELP
     protected function entityToString($entity)
     {
         $class = get_class($entity);
-        $meta = $this->getContainer()->get('doctrine')->getManagerForClass($class)->getClassMetadata($class);
+        $meta  = $this->getContainer()->get('doctrine')->getManagerForClass($class)->getClassMetadata($class);
 
-        $id = $meta->getIdentifierValues($entity);
-        $title = method_exists($entity, '__toString') ? (string) $entity : get_class($entity) . '@' . spl_object_hash($entity);
+        $id    = $meta->getIdentifierValues($entity);
+        $title = method_exists($entity, '__toString') ? (string)$entity : get_class($entity) . '@' . spl_object_hash($entity);
 
         return sprintf('%s %s', json_encode($id), $title);
+    }
+
+    /**
+     * @param OutputInterface $output
+     * @param Message         $message
+     * @param string          $payload
+     */
+    protected function notify(OutputInterface $output, Message $message, $payload)
+    {
+        $output->writeln(sprintf('Published message for <info>%s</info>', json_encode($payload)));
+
+        if ($output->getVerbosity() > $output::VERBOSITY_VERBOSE) {
+            $output->writeln(sprintf('=> Message body: <comment>%s</comment>', $message->getBody()));
+        }
     }
 }
