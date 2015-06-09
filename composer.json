@@ -14,7 +14,7 @@
   "require": {
     "php":                 ">=5.5",
     "psr/log":             "~1.0",
-    "symfony/symfony":     "~2.3",
+    "symfony/symfony":     "~2.6",
     "treehouselabs/queue": "dev-master"
   },
   "require-dev": {
