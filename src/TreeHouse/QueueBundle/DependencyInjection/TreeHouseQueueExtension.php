@@ -65,11 +65,12 @@ class TreeHouseQueueExtension extends Extension
      */
     protected function loadConnections(array $config, ContainerBuilder $container)
     {
+        $queueFactory = new Reference('tree_house.queue.factory');
+
         foreach ($config['connections'] as $name => $connection) {
             // create connection
             $definition = new Definition($container->getParameter('tree_house.queue.connection.class'));
-            $definition->setFactoryService('tree_house.queue.factory');
-            $definition->setFactoryMethod('createConnection');
+            $definition->setFactory([$queueFactory, 'createConnection']);
             $definition->addArgument($connection['host']);
             $definition->addArgument((integer) $connection['port']);
             $definition->addArgument($connection['user']);
@@ -83,8 +84,7 @@ class TreeHouseQueueExtension extends Extension
 
             // create channel
             $definition = new Definition($container->getParameter('tree_house.queue.channel.class'));
-            $definition->setFactoryService('tree_house.queue.factory');
-            $definition->setFactoryMethod('createChannel');
+            $definition->setFactory([$queueFactory, 'createChannel']);
             $definition->addArgument(new Reference($connectionId));
             // TODO lazy
 //            $definition->setLazy(true);
@@ -117,6 +117,9 @@ class TreeHouseQueueExtension extends Extension
      */
     protected function loadPublishers(array $config, ContainerBuilder $container)
     {
+        $queueFactory = new Reference('tree_house.queue.factory');
+
+        $publishers = [];
         foreach ($config['publishers'] as $name => $publisher) {
             // get the right channel for the exchange
             $exchange     = $publisher['exchange'];
@@ -131,8 +134,7 @@ class TreeHouseQueueExtension extends Extension
 
             // create exchange
             $definition = new Definition($container->getParameter('tree_house.queue.exchange.class'));
-            $definition->setFactoryService('tree_house.queue.factory');
-            $definition->setFactoryMethod('createExchange');
+            $definition->setFactory([$queueFactory, 'createExchange']);
             $definition->addArgument(new Reference($channelAlias));
             $definition->addArgument($name);
             $definition->addArgument($exchange['type']);
@@ -154,7 +156,12 @@ class TreeHouseQueueExtension extends Extension
             $publisher->addArgument(new Reference($composerId));
 
             $container->setDefinition($publisherId, $publisher);
+
+            $publishers[$name] = $publisherId;
         }
+
+        // set a parameter to reference the publishers
+        $container->setParameter('tree_house.queue.publishers', $publishers);
     }
 
     /**
@@ -163,6 +170,8 @@ class TreeHouseQueueExtension extends Extension
      */
     protected function loadConsumers(array $config, ContainerBuilder $container)
     {
+        $consumers = [];
+
         foreach ($config['consumers'] as $name => $consumer) {
             // load the queue
             $queue = $consumer['queue'];
@@ -222,7 +231,12 @@ class TreeHouseQueueExtension extends Extension
 
             $consumerId = sprintf('tree_house.queue.consumer.%s', $name);
             $container->setDefinition($consumerId, $definition);
+
+            $consumers[$name] = $consumerId;
         }
+
+        // set a parameter to reference the consumers
+        $container->setParameter('tree_house.queue.consumers', $consumers);
     }
 
     /**
@@ -245,13 +259,14 @@ class TreeHouseQueueExtension extends Extension
      */
     protected function loadQueue($name, array $queue, ContainerBuilder $container)
     {
+        $queueFactory = new Reference('tree_house.queue.factory');
+
         $connection = $queue['connection'] ?: $container->getParameter('tree_house.queue.default_connection');
         $channelId  = sprintf('tree_house.queue.channel.%s', $connection);
 
         // create queue
         $definition = new Definition($container->getParameter('tree_house.queue.queue.class'));
-        $definition->setFactoryService('tree_house.queue.factory');
-        $definition->setFactoryMethod('createQueue');
+        $definition->setFactory([$queueFactory, 'createQueue']);
         $definition->addArgument(new Reference($channelId));
         $definition->addArgument($queue['name']);
         $definition->addArgument($this->getQueueFlagsValue($queue));
