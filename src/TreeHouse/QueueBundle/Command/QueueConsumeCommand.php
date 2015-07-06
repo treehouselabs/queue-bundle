@@ -63,25 +63,12 @@ class QueueConsumeCommand extends ContainerAwareCommand
                         '<comment>[%s]</comment> Processing payload <info>%s</info>',
                         $message->getId(),
                         $this->getPayloadOutput($message, 20, $output->getVerbosity() > $output::VERBOSITY_VERBOSE)
-                    ),
-                    OutputInterface::VERBOSITY_VERBOSE
+                    )
                 );
 
                 $res = $processor->process($message);
 
-                if ($res === true) {
-                    $provider->ack($message);
-
-                    $this->output(
-                        sprintf('<comment>[%s]</comment> process <info>successful</info>', $message->getId()),
-                        OutputInterface::VERBOSITY_VERBOSE
-                    );
-                } elseif ($res === false) {
-                    $this->output(
-                        sprintf('<comment>[%s]</comment> process <error>unsuccessful</error>', $message->getId()),
-                        OutputInterface::VERBOSITY_VERBOSE
-                    );
-                } else {
+                if (!is_bool($res)) {
                     throw new \LogicException(
                         sprintf(
                             '<error>Did you forget to return a boolean value in the %s processor?</error>',
@@ -89,6 +76,12 @@ class QueueConsumeCommand extends ContainerAwareCommand
                         )
                     );
                 }
+
+                $provider->ack($message);
+
+                $this->output(
+                    sprintf('<comment>[%s]</comment> processed with result: <info>%s</info>', $message->getId(), json_encode($res))
+                );
 
                 // see if batch is completed
                 if (++$processed % $batchSize === 0) {
@@ -205,7 +198,7 @@ class QueueConsumeCommand extends ContainerAwareCommand
 
         $width = (int) $this->getApplication()->getTerminalDimensions()[0] - $offset;
         if ($width > 0 && mb_strwidth($payload, 'utf8') > $width) {
-            $payload = mb_substr($payload, 0, $width - 3) . '...';
+            $payload = mb_substr($payload, 0, $width - 10) . '...';
         }
 
         return $payload;
