@@ -9,6 +9,7 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use TreeHouse\Queue\Message\Message;
 use TreeHouse\Queue\Message\Provider\MessageProviderInterface;
+use TreeHouse\Queue\Message\Publisher\MessagePublisherInterface;
 use TreeHouse\Queue\Processor\ProcessorInterface;
 use TreeHouse\QueueBundle\QueueEvents;
 
@@ -66,7 +67,20 @@ class QueueConsumeCommand extends ContainerAwareCommand
                     )
                 );
 
-                $res = $processor->process($message);
+                try {
+                    $res = $processor->process($message);
+                } catch (\Exception $e) {
+                    // if we have a publisher for this type of message,
+                    // we nack the message and requeue it at the end of the queue so
+                    // that we don't block other (correct) messages
+                    $publisher = $this->getMessagePublisher($name);
+                    if ($publisher) {
+                        $provider->nack($message, false);
+                        $publisher->publish($message);
+                    }
+
+                    throw $e;
+                }
 
                 if (!is_bool($res)) {
                     throw new \LogicException(
@@ -156,6 +170,20 @@ class QueueConsumeCommand extends ContainerAwareCommand
     protected function getProcessor($name)
     {
         return $this->getContainer()->get(sprintf('tree_house.queue.processor.%s', $name));
+    }
+
+    /**
+     * @param string $name
+     *
+     * @return MessagePublisherInterface|null
+     */
+    protected function getMessagePublisher($name)
+    {
+        if ($this->getContainer()->has(sprintf('tree_house.queue.publisher.%s', $name))) {
+            return $this->getContainer()->get(sprintf('tree_house.queue.publisher.%s', $name));
+        }
+
+        return null;
     }
 
     /**
