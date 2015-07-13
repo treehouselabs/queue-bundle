@@ -58,12 +58,12 @@ class QueueConsumeCommand extends ContainerAwareCommand
 
         $processed = 0;
         while (true) {
-            if (null !== $message = $provider->get()) {
+            $provider->consume(function(Message $message) use ($output, $processor, $provider, $name) {
                 $this->output(
                     sprintf(
                         '<comment>[%s]</comment> Processing payload <info>%s</info>',
                         $message->getId(),
-                        $this->getPayloadOutput($message, 20, $output->getVerbosity() > $output::VERBOSITY_VERBOSE)
+                        $this->getPayloadOutput($message, 20, $output->getVerbosity() > OutputInterface::VERBOSITY_VERBOSE)
                     )
                 );
 
@@ -96,38 +96,38 @@ class QueueConsumeCommand extends ContainerAwareCommand
                 $this->output(
                     sprintf('<comment>[%s]</comment> processed with result: <info>%s</info>', $message->getId(), json_encode($res))
                 );
+            });
 
-                // see if batch is completed
-                if (++$processed % $batchSize === 0) {
-                    $this->flush();
-                }
+            // see if batch is completed
+            if (++$processed % $batchSize === 0) {
+                $this->flush();
+            }
 
-                if (($limit > 0) && ($processed >= $limit)) {
-                    $this->output(
-                        sprintf('Maximum number of messages consumed (%d)', $limit),
-                        OutputInterface::VERBOSITY_VERBOSE
-                    );
+            if (($limit > 0) && ($processed >= $limit)) {
+                $this->output(
+                    sprintf('Maximum number of messages consumed (%d)', $limit),
+                    OutputInterface::VERBOSITY_VERBOSE
+                );
 
-                    break;
-                }
+                break;
+            }
 
-                if (($maxMemory > 0) && memory_get_usage(true) > $maxMemory) {
-                    $this->output(
-                        sprintf('Memory peak of %dMB reached', $maxMemory / 1024 / 1024),
-                        OutputInterface::VERBOSITY_VERBOSE
-                    );
+            if (($maxMemory > 0) && memory_get_usage(true) > $maxMemory) {
+                $this->output(
+                    sprintf('Memory peak of %dMB reached', $maxMemory / 1024 / 1024),
+                    OutputInterface::VERBOSITY_VERBOSE
+                );
 
-                    break;
-                }
+                break;
+            }
 
-                if (($maxTime > 0) && ((time() - $start) > $maxTime)) {
-                    $this->output(
-                        sprintf('Maximum execution time of %ds reached', $maxTime),
-                        OutputInterface::VERBOSITY_VERBOSE
-                    );
+            if (($maxTime > 0) && ((time() - $start) > $maxTime)) {
+                $this->output(
+                    sprintf('Maximum execution time of %ds reached', $maxTime),
+                    OutputInterface::VERBOSITY_VERBOSE
+                );
 
-                    break;
-                }
+                break;
             }
 
             // cool down
