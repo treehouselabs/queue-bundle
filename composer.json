@@ -15,7 +15,7 @@
     "php":                 ">=5.5",
     "psr/log":             "~1.0",
     "symfony/symfony":     "~2.6",
-    "treehouselabs/queue": ">=v0.0.3"
+    "treehouselabs/queue": ">=v0.0.4"
   },
   "require-dev": {
     "doctrine/orm":                 "~2.3",
