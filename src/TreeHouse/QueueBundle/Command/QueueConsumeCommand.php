@@ -7,10 +7,12 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use TreeHouse\Queue\Message\Message;
 use TreeHouse\Queue\Message\Provider\MessageProviderInterface;
 use TreeHouse\Queue\Message\Publisher\MessagePublisherInterface;
 use TreeHouse\Queue\Processor\ProcessorInterface;
+use TreeHouse\QueueBundle\Event\ConsumeEvent;
 use TreeHouse\QueueBundle\QueueEvents;
 
 class QueueConsumeCommand extends ContainerAwareCommand
@@ -46,6 +48,9 @@ class QueueConsumeCommand extends ContainerAwareCommand
         $maxMemory = intval($input->getOption('max-memory')) * 1024 * 1024;
         $maxTime   = intval($input->getOption('max-time'));
 
+        /** @var EventDispatcherInterface $dispatcher */
+        $dispatcher = $this->getContainer()->get('event_dispatcher');
+
         $this->output = $output;
 
         $provider   = $this->getMessageProvider($name);
@@ -58,7 +63,9 @@ class QueueConsumeCommand extends ContainerAwareCommand
 
         $processed = 0;
         while (true) {
-            $provider->consume(function(Message $message) use ($output, $processor, $provider, $name) {
+            $provider->consume(function(Message $message) use ($output, $processor, $provider, $name, $dispatcher) {
+                $dispatcher->dispatch(QueueEvents::PRE_CONSUME, new ConsumeEvent($message));
+
                 $this->output(
                     sprintf(
                         '<comment>[%s]</comment> Processing payload <info>%s</info>',
@@ -96,6 +103,8 @@ class QueueConsumeCommand extends ContainerAwareCommand
                 $this->output(
                     sprintf('<comment>[%s]</comment> processed with result: <info>%s</info>', $message->getId(), json_encode($res))
                 );
+
+                $dispatcher->dispatch(QueueEvents::POST_CONSUME, new ConsumeEvent($message));
             });
 
             // see if batch is completed
