@@ -1,34 +1,34 @@
 services:
   test_processor:
-    class: TreeHouse\FunctionalTestBundle\Queue\Processor\TestProcessor
+    class: 'TreeHouse\FunctionalTestBundle\Queue\Processor\TestProcessor'
 
 framework:
-  secret:       secret
+  secret:       'secret'
   test:         ~
-  router:       { resource: "%kernel.root_dir%/routing_test.yml" }
+  router:       { resource: '%kernel.root_dir%/routing_test.yml' }
   templating:   { engines: ['twig'] }
   session:
-    storage_id: session.storage.mock_file
+    storage_id: 'session.storage.mock_file'
   profiler:     { only_exceptions: false }
 
 tree_house_queue:
-  driver: amqp
-  connection: localhost
+  driver: 'amqp'
+  connection: 'localhost'
   publishers:
     process1:
-      serializer: php
-      exchange: direct
+      serializer: 'php'
+      exchange: 'direct'
     pubsub:
-      serializer: json
+      serializer: 'json'
       exchange:
-        type: fanout
+        type: 'fanout'
 
   consumers:
     process1:
-      processor: TreeHouse\FunctionalTestBundle\Queue\Processor\TestProcessor
+      processor: 'TreeHouse\FunctionalTestBundle\Queue\Processor\TestProcessor'
       attempts: 3
     pubsub:
-      processor: @test_processor
+      processor: '@test_processor'
       attempts: 5
       queue:
         durable: false
@@ -39,18 +39,18 @@ tree_house_queue:
   queues:
     q1:
       binding:
-        exchange: xchg1
+        exchange: 'xchg1'
         routing_keys:
-          - foo
-          - bar
+          - 'foo'
+          - 'bar'
     pubsub1:
       durable: false
       passive: true
       exclusive: true
       auto_delete: true
       bindings:
-        exchange: pubsub
+        exchange: 'pubsub'
     pubsub2:
       durable: true
       bindings:
-        exchange: pubsub
+        exchange: 'pubsub'

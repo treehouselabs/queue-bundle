@@ -4,7 +4,7 @@ namespace TreeHouse\QueueBundle\Tests\DependencyInjection;
 
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
-use Symfony\Component\DependencyInjection\Dumper\PhpDumper;
+use Symfony\Component\DependencyInjection\DefinitionDecorator;
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBag;
 use Symfony\Component\DependencyInjection\Reference;
@@ -13,6 +13,16 @@ use TreeHouse\QueueBundle\DependencyInjection\TreeHouseQueueExtension;
 
 class TreeHouseQueueExtensionTest extends \PHPUnit_Framework_TestCase
 {
+    /**
+     * @inheritdoc
+     */
+    protected function setUp()
+    {
+        if (!extension_loaded('amqp')) {
+            $this->markTestSkipped('AMQP extension not loaded');
+        }
+    }
+
     public function testDriverParameters()
     {
         $container = $this->getContainer('complete.yml');
@@ -172,7 +182,6 @@ class TreeHouseQueueExtensionTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals(AMQP_EX_TYPE_TOPIC, $exchange->getArgument(2));
         $this->assertEquals(AMQP_PASSIVE | AMQP_DURABLE, $exchange->getArgument(3));
         $this->assertEquals(['x-ha-policy' => 'all'], $exchange->getArgument(4));
-
     }
 
     public function testExchangeConnectionAlias()
@@ -215,8 +224,10 @@ class TreeHouseQueueExtensionTest extends \PHPUnit_Framework_TestCase
 
         // test the consumer
         $this->assertTrue($container->hasDefinition('tree_house.queue.consumer.process2'));
+        /** @var DefinitionDecorator $consumer */
         $consumer = $container->getDefinition('tree_house.queue.consumer.process2');
-        $this->assertEquals($container->getParameter('tree_house.queue.consumer.class'), $consumer->getClass());
+        $this->assertInstanceOf(DefinitionDecorator::class, $consumer);
+        $this->assertEquals('tree_house.queue.consumer.prototype', $consumer->getParent());
     }
 
     public function testQueueConfiguration()
@@ -261,7 +272,7 @@ class TreeHouseQueueExtensionTest extends \PHPUnit_Framework_TestCase
         $container = new ContainerBuilder(new ParameterBag(array_merge($parameters, ['kernel.debug' => $debug])));
         $container->registerExtension(new TreeHouseQueueExtension());
 
-        $locator = new FileLocator(__DIR__.'/Fixtures');
+        $locator = new FileLocator(__DIR__ . '/Fixtures');
         $loader = new YamlFileLoader($container, $locator);
         $loader->load($file);
 

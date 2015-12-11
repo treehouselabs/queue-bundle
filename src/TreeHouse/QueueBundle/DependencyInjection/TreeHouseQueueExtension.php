@@ -5,6 +5,7 @@ namespace TreeHouse\QueueBundle\DependencyInjection;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
+use Symfony\Component\DependencyInjection\DefinitionDecorator;
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
 use Symfony\Component\DependencyInjection\Reference;
 use Symfony\Component\HttpKernel\DependencyInjection\Extension;
@@ -223,7 +224,7 @@ class TreeHouseQueueExtension extends Extension
             }
 
             // create the consumer
-            $definition = new Definition($container->getParameter('tree_house.queue.consumer.class'));
+            $definition = new DefinitionDecorator('tree_house.queue.consumer.prototype');
             $definition->addArgument(new Reference($providerId));
             $definition->addArgument(new Reference($processorId));
             // TODO lazy
