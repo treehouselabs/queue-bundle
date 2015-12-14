@@ -27,7 +27,7 @@ Feature: publish
             processor: TreeHouse\FunctionalTestBundle\Queue\Processor\TestProcessor
             attempts: 3
           pubsub:
-            processor: @test_processor
+            processor: '@test_processor'
             attempts: 5
             queue:
               durable: false

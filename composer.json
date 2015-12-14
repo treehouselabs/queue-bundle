@@ -10,7 +10,6 @@
       "email": "peter@treehouse.nl"
     }
   ],
-  "minimum-stability": "stable",
   "require": {
     "php":                 ">=5.5",
     "psr/log":             "^1.0",
@@ -18,9 +17,10 @@
     "treehouselabs/queue": "^v0.0.4"
   },
   "require-dev": {
+    "ext-amqp":                     "^1.7",
     "doctrine/orm":                 "^2.3",
     "phpunit/phpunit":              "^4.0",
-    "behat/behat":                  "^3.0",
+    "behat/behat":                  "dev-master as 3.0",
     "symfony/proxy-manager-bridge": "^2.4",
     "ocramius/proxy-manager":       "^0.5"
   },
