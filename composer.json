@@ -10,25 +10,29 @@
       "email": "peter@treehouse.nl"
     }
   ],
-  "minimum-stability": "stable",
   "require": {
     "php":                 ">=5.5",
-    "psr/log":             "~1.0",
-    "symfony/symfony":     "~2.6",
-    "treehouselabs/queue": ">=v0.0.4"
+    "psr/log":             "^1.0",
+    "symfony/symfony":     "^2.6|^3.0",
+    "treehouselabs/queue": "^v0.0.4"
   },
   "require-dev": {
-    "doctrine/orm":                 "~2.3",
-    "phpunit/phpunit":              "~4.0",
-    "behat/behat":                  "~3.0",
-    "symfony/proxy-manager-bridge": "~2.4",
-    "ocramius/proxy-manager":       "~0.5",
-    "empi89/php-amqp-stubs":        "dev-master",
-    "behat/symfony2-extension":     "~2.0"
+    "ext-amqp":                     "^1.7",
+    "doctrine/orm":                 "^2.3",
+    "phpunit/phpunit":              "^4.0",
+    "behat/behat":                  "dev-master as 3.0",
+    "symfony/proxy-manager-bridge": "^2.4",
+    "ocramius/proxy-manager":       "^0.5"
   },
   "autoload": {
     "psr-4": {
       "TreeHouse\\QueueBundle\\": "src/TreeHouse/QueueBundle/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "TreeHouse\\QueueBundle\\Tests\\": "tests/src/TreeHouse/QueueBundle/",
+      "TreeHouse\\FunctionalTestBundle\\": "tests/src/TreeHouse/FunctionalTestBundle/"
     }
   }
 }
