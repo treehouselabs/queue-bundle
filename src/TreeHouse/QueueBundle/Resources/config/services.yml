@@ -33,7 +33,7 @@ services:
       - '@doctrine'
 
   tree_house.queue.event_listener.queue:
-    public: false
+    public: true
     class: 'TreeHouse\QueueBundle\EventListener\FlushListener'
     tags:
       - { name: 'kernel.event_listener', event: 'queue.flush', method: 'onFlush' }
