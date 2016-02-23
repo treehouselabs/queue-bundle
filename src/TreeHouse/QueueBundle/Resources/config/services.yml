@@ -3,9 +3,9 @@ parameters:
   tree_house.queue.driver.amqp.channel.class: AMQPChannel
   tree_house.queue.driver.amqp.exchange.class: AMQPExchange
   tree_house.queue.driver.amqp.queue.class: AMQPQueue
-  tree_house.queue.driver.amqp.provider.class: TreeHouse\Queue\Message\Provider\AmqpMessageProvider
-  tree_house.queue.driver.amqp.publisher.class: TreeHouse\Queue\Message\Publisher\AmqpMessagePublisher
-  tree_house.queue.driver.amqp.factory.class: TreeHouse\Queue\Factory\AmqpFactory
+  tree_house.queue.driver.amqp.provider.class: TreeHouse\Queue\Message\Provider\MessageProvider
+  tree_house.queue.driver.amqp.publisher.class: TreeHouse\Queue\Amqp\Driver\Amqp\Publisher\AmqpMessagePublisher
+  tree_house.queue.driver.amqp.factory.class: TreeHouse\Queue\Amqp\Driver\Amqp\AmqpFactory
   tree_house.queue.composer.default.class: TreeHouse\Queue\Message\Composer\DefaultMessageComposer
 
 services:
@@ -16,7 +16,7 @@ services:
 
   tree_house.queue.driver.amqp.factory:
     public: true
-    class: TreeHouse\Queue\Factory\AmqpFactory
+    class: TreeHouse\Queue\Amqp\Driver\Amqp\AmqpFactory
 
   tree_house.queue.serializer.php:
     public: false

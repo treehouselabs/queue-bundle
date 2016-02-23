@@ -8,6 +8,8 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBag;
+use TreeHouse\Queue\Amqp\ExchangeInterface;
+use TreeHouse\Queue\Amqp\QueueInterface;
 use TreeHouse\Queue\Message\Message;
 use TreeHouse\Queue\Message\Publisher\MessagePublisherInterface;
 use TreeHouse\QueueBundle\DependencyInjection\TreeHouseQueueExtension;
@@ -28,12 +30,12 @@ class FeatureContext implements SnippetAcceptingContext
     private $container;
 
     /**
-     * @var \AMQPExchange[]
+     * @var ExchangeInterface[]
      */
     private $exchanges;
 
     /**
-     * @var \AMQPQueue[]
+     * @var QueueInterface[]
      */
     private $queues;
 

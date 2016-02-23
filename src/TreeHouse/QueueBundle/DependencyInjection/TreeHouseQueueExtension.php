@@ -9,6 +9,8 @@ use Symfony\Component\DependencyInjection\DefinitionDecorator;
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
 use Symfony\Component\DependencyInjection\Reference;
 use Symfony\Component\HttpKernel\DependencyInjection\Extension;
+use TreeHouse\Queue\Amqp\ExchangeInterface;
+use TreeHouse\Queue\Amqp\QueueInterface;
 use TreeHouse\Queue\Processor\Retry\BackoffStrategy;
 use TreeHouse\Queue\Processor\Retry\RetryProcessor;
 
@@ -22,7 +24,7 @@ class TreeHouseQueueExtension extends Extension
         $configuration = new Configuration();
         $config = $this->processConfiguration($configuration, $configs);
 
-        $loader = new YamlFileLoader($container, new FileLocator(__DIR__.'/../Resources/config'));
+        $loader = new YamlFileLoader($container, new FileLocator(__DIR__ . '/../Resources/config'));
         $loader->load('services.yml');
 
         $this->loadDriver($config, $container);
@@ -123,9 +125,9 @@ class TreeHouseQueueExtension extends Extension
         $publishers = [];
         foreach ($config['publishers'] as $name => $publisher) {
             // get the right channel for the exchange
-            $exchange     = $publisher['exchange'];
-            $connection   = $exchange['connection'] ?: $container->getParameter('tree_house.queue.default_connection');
-            $channelId    = sprintf('tree_house.queue.channel.%s', $connection);
+            $exchange = $publisher['exchange'];
+            $connection = $exchange['connection'] ?: $container->getParameter('tree_house.queue.default_connection');
+            $channelId = sprintf('tree_house.queue.channel.%s', $connection);
             $channelAlias = sprintf('tree_house.queue.channel.%s', $name);
 
             // add alias if connection is named differently than exchange
@@ -263,7 +265,7 @@ class TreeHouseQueueExtension extends Extension
         $queueFactory = new Reference('tree_house.queue.factory');
 
         $connection = $queue['connection'] ?: $container->getParameter('tree_house.queue.default_connection');
-        $channelId  = sprintf('tree_house.queue.channel.%s', $connection);
+        $channelId = sprintf('tree_house.queue.channel.%s', $connection);
 
         // create queue
         $definition = new Definition($container->getParameter('tree_house.queue.queue.class'));
@@ -278,9 +280,9 @@ class TreeHouseQueueExtension extends Extension
         if (empty($queue['bindings'])) {
             // bind to the same exchange
             $queue['bindings'][] = [
-                'exchange'     => $name,
+                'exchange' => $name,
                 'routing_keys' => [],
-                'arguments'    => [],
+                'arguments' => [],
             ];
         }
 
@@ -303,18 +305,18 @@ class TreeHouseQueueExtension extends Extension
     /**
      * @param array $exchange
      *
-     * @return integer
+     * @return int
      */
     protected function getExchangeFlagsValue(array $exchange)
     {
-        $flags = AMQP_NOPARAM;
+        $flags = ExchangeInterface::NOPARAM;
 
         if ($exchange['durable']) {
-            $flags |= AMQP_DURABLE;
+            $flags |= ExchangeInterface::DURABLE;
         }
 
         if ($exchange['passive']) {
-            $flags |= AMQP_PASSIVE;
+            $flags |= ExchangeInterface::PASSIVE;
         }
 
         return $flags;
@@ -323,26 +325,26 @@ class TreeHouseQueueExtension extends Extension
     /**
      * @param array $queue
      *
-     * @return integer
+     * @return int
      */
     protected function getQueueFlagsValue(array $queue)
     {
-        $flags = AMQP_NOPARAM;
+        $flags = QueueInterface::NOPARAM;
 
         if ($queue['durable']) {
-            $flags |= AMQP_DURABLE;
+            $flags |= QueueInterface::DURABLE;
         }
 
         if ($queue['passive']) {
-            $flags |= AMQP_PASSIVE;
+            $flags |= QueueInterface::PASSIVE;
         }
 
         if ($queue['exclusive']) {
-            $flags |= AMQP_EXCLUSIVE;
+            $flags |= QueueInterface::EXCLUSIVE;
         }
 
         if ($queue['auto_delete']) {
-            $flags |= AMQP_AUTODELETE;
+            $flags |= QueueInterface::AUTODELETE;
         }
 
         return $flags;
@@ -358,7 +360,7 @@ class TreeHouseQueueExtension extends Extension
     protected function createMessageComposerDefinition(ContainerBuilder $container, $name, array $publisher)
     {
         $composerId = sprintf('tree_house.queue.composer.%s', $name);
-        $composer   = $publisher['composer'];
+        $composer = $publisher['composer'];
 
         // resolve service
         if (substr($composer, 0, 1) === '@') {

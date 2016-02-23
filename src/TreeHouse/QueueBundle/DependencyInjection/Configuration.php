@@ -2,6 +2,7 @@
 
 namespace TreeHouse\QueueBundle\DependencyInjection;
 
+use TreeHouse\Queue\Amqp\ExchangeInterface as Exchg;
 use Symfony\Component\Config\Definition\Builder\ArrayNodeDefinition;
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 use Symfony\Component\Config\Definition\ConfigurationInterface;
@@ -9,6 +10,9 @@ use Symfony\Component\Form\Exception\InvalidConfigurationException;
 
 class Configuration implements ConfigurationInterface
 {
+    /**
+     * @inheritdoc
+     */
     public function getConfigTreeBuilder()
     {
         $treeBuilder = new TreeBuilder();
@@ -40,6 +44,9 @@ class Configuration implements ConfigurationInterface
         return $treeBuilder;
     }
 
+    /**
+     * @param ArrayNodeDefinition $rootNode
+     */
     private function addConnectionsSection(ArrayNodeDefinition $rootNode)
     {
         $rootNode
@@ -126,6 +133,9 @@ EOF
         ;
     }
 
+    /**
+     * @param ArrayNodeDefinition $rootNode
+     */
     private function addPublishersSection(ArrayNodeDefinition $rootNode)
     {
         $rootNode
@@ -167,16 +177,15 @@ EOF
                                 ->end()
                                 ->children()
                                     ->enumNode('type')
-                                        ->values([AMQP_EX_TYPE_DIRECT, AMQP_EX_TYPE_FANOUT, AMQP_EX_TYPE_TOPIC, AMQP_EX_TYPE_HEADERS])
-                                        ->defaultValue(AMQP_EX_TYPE_DIRECT)
+                                        ->values([Exchg::TYPE_DIRECT, Exchg::TYPE_FANOUT, Exchg::TYPE_TOPIC, Exchg::TYPE_HEADERS])
+                                        ->defaultValue(Exchg::TYPE_DIRECT)
                                     ->end()
                                     ->scalarNode('connection')->defaultNull()->end()
                                     ->booleanNode('durable')->defaultTrue()->end()
                                     ->booleanNode('passive')->defaultFalse()->end()
-//                                    TODO not supported yet?
-//                                    ->booleanNode('auto_delete')->defaultFalse()->end()
-//                                    ->booleanNode('internal')->defaultFalse()->end()
-//                                    ->booleanNode('nowait')->defaultFalse()->end()
+                                    ->booleanNode('auto_delete')->defaultFalse()->end()
+                                    ->booleanNode('internal')->defaultFalse()->end()
+                                    ->booleanNode('nowait')->defaultFalse()->end()
                                     ->arrayNode('arguments')
                                         ->normalizeKeys(false)
                                         ->prototype('scalar')
@@ -191,6 +200,9 @@ EOF
         ;
     }
 
+    /**
+     * @param ArrayNodeDefinition $rootNode
+     */
     private function addConsumersSection(ArrayNodeDefinition $rootNode)
     {
         $rootNode
@@ -281,6 +293,9 @@ EOF
         ;
     }
 
+    /**
+     * @param ArrayNodeDefinition $rootNode
+     */
     private function addQueuesSection(ArrayNodeDefinition $rootNode)
     {
         $rootNode
