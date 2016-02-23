@@ -8,6 +8,8 @@ use Symfony\Component\DependencyInjection\DefinitionDecorator;
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBag;
 use Symfony\Component\DependencyInjection\Reference;
+use TreeHouse\Queue\Amqp\ExchangeInterface as Exchg;
+use TreeHouse\Queue\Amqp\QueueInterface as Queue;
 use TreeHouse\Queue\Processor\Retry\RetryProcessor;
 use TreeHouse\QueueBundle\DependencyInjection\TreeHouseQueueExtension;
 
@@ -179,8 +181,8 @@ class TreeHouseQueueExtensionTest extends \PHPUnit_Framework_TestCase
         // test the exchange
         $exchange = $container->getDefinition('tree_house.queue.exchange.process2');
         $this->assertEquals('process2', $exchange->getArgument(1));
-        $this->assertEquals(AMQP_EX_TYPE_TOPIC, $exchange->getArgument(2));
-        $this->assertEquals(AMQP_PASSIVE | AMQP_DURABLE, $exchange->getArgument(3));
+        $this->assertEquals(Exchg::TYPE_TOPIC, $exchange->getArgument(2));
+        $this->assertEquals(Exchg::PASSIVE | Exchg::DURABLE, $exchange->getArgument(3));
         $this->assertEquals(['x-ha-policy' => 'all'], $exchange->getArgument(4));
     }
 
@@ -240,7 +242,7 @@ class TreeHouseQueueExtensionTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals($container->getParameter('tree_house.queue.queue.class'), $queue->getClass());
         $this->assertEquals('tree_house.queue.channel.conn1', (string) $queue->getArgument(0));
         $this->assertEquals('q1', $queue->getArgument(1));
-        $this->assertEquals(AMQP_DURABLE, $queue->getArgument(2));
+        $this->assertEquals(Queue::DURABLE, $queue->getArgument(2));
         $this->assertEquals(['x-match' => 'all'], $queue->getArgument(3));
         $this->assertEquals(
             [
@@ -255,7 +257,7 @@ class TreeHouseQueueExtensionTest extends \PHPUnit_Framework_TestCase
 
         $this->assertEquals('tree_house.queue.channel.conn2', (string) $queue->getArgument(0));
         $this->assertEquals(null, $queue->getArgument(1));
-        $this->assertEquals(AMQP_PASSIVE | AMQP_EXCLUSIVE | AMQP_AUTODELETE, $queue->getArgument(2));
+        $this->assertEquals(Queue::PASSIVE | Queue::EXCLUSIVE | Queue::AUTODELETE, $queue->getArgument(2));
         $this->assertEquals([], $queue->getArgument(3));
         $this->assertEquals(
             [
