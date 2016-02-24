@@ -13,6 +13,7 @@ For a complete list of releases, see the [releases page][0].
 * Added Symfony3 support
 * Added configuration to specify the strategy which retries are handled with
 * Added cache warmer
+* Added configuration to automatically declare dead letter exchanges
 
 ### Breaking changes
 * Updated required PHP version to 5.6

@@ -61,6 +61,18 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
     /**
      * @test
      */
+    public function it_should_remove_flush_listener_when_auto_flush_is_disabled()
+    {
+        $this->load([
+            'auto_flush' => false,
+        ]);
+
+        $this->assertContainerBuilderNotHasService('tree_house.queue.event_listener.queue');
+    }
+
+    /**
+     * @test
+     */
     public function it_should_create_connection_definitions()
     {
         $config = [
@@ -213,6 +225,13 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($exchangeId, 0, new Reference($channelId));
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($exchangeId, 1, 'process2');
 
+        // assert dead letter exchange and its arguments
+        $dlxId = 'tree_house.queue.exchange.process2.dead';
+        $dlxChannelId = sprintf('%s.dead', $channelId);
+        $this->assertContainerBuilderHasService($dlxId, $this->container->getParameter('tree_house.queue.exchange.class'));
+        $this->assertContainerBuilderHasServiceDefinitionWithArgument($dlxId, 0, new Reference($dlxChannelId));
+        $this->assertContainerBuilderHasServiceDefinitionWithArgument($dlxId, 1, 'process2.dead');
+
         // assert that a message composer and serializer have been created with an alias
         $serializerId = 'tree_house.queue.serializer.process2';
         $composerId = 'tree_house.queue.composer.process2';
@@ -335,12 +354,17 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
             'publishers' => [
                 'process2' => [
                     'exchange' => [
-                        'type' => 'fanout',
+                        'name' => 'foo',
+                        'type' => ExchangeInterface::TYPE_FANOUT,
                         'connection' => 'conn2',
                         'passive' => true,
                         'arguments' => [
                           'x-ha-policy' => 'all',
                         ],
+                        'dlx' => [
+                            'name' => 'dead_foos',
+                            'type' => ExchangeInterface::TYPE_TOPIC,
+                        ]
                     ],
                 ],
             ],
@@ -348,31 +372,19 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
 
         $exchangeId = 'tree_house.queue.exchange.process2';
         $this->assertContainerBuilderHasAlias('tree_house.queue.channel.process2', 'tree_house.queue.channel.conn2');
-        $this->assertContainerBuilderHasServiceDefinitionWithArgument($exchangeId, 1, 'process2');
-        $this->assertContainerBuilderHasServiceDefinitionWithArgument($exchangeId, 2, 'fanout');
+        $this->assertContainerBuilderHasServiceDefinitionWithArgument($exchangeId, 1, 'foo');
+        $this->assertContainerBuilderHasServiceDefinitionWithArgument($exchangeId, 2, ExchangeInterface::TYPE_FANOUT);
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($exchangeId, 3, ExchangeInterface::PASSIVE | ExchangeInterface::DURABLE);
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($exchangeId, 4, ['x-ha-policy' => 'all']);
-    }
 
-    /**
-     * @test
-     */
-    public function it_should_store_the_created_publishers()
-    {
-        $this->load([
-            'publishers' => [
-                'process1' => [],
-                'process2' => [],
-            ],
-        ]);
-
-        $this->assertContainerBuilderHasParameter(
-            'tree_house.queue.publishers',
-            [
-                'process1' => 'tree_house.queue.publisher.process1',
-                'process2' => 'tree_house.queue.publisher.process2',
-            ]
-        );
+        // assert dead letter exchange and its arguments
+        $dlxId = 'tree_house.queue.exchange.dead_foos';
+        $dlxChannelId = 'tree_house.queue.channel.dead_foos';
+        $this->assertContainerBuilderHasService($dlxId, $this->container->getParameter('tree_house.queue.exchange.class'));
+        $this->assertContainerBuilderHasAlias($dlxChannelId, 'tree_house.queue.channel.conn1');
+        $this->assertContainerBuilderHasServiceDefinitionWithArgument($dlxId, 0, new Reference($dlxChannelId));
+        $this->assertContainerBuilderHasServiceDefinitionWithArgument($dlxId, 1, 'dead_foos');
+        $this->assertContainerBuilderHasServiceDefinitionWithArgument($dlxId, 2, ExchangeInterface::TYPE_TOPIC);
     }
 
     /**
@@ -596,21 +608,89 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
 
     /**
      * @test
+     * @expectedException \Symfony\Component\Config\Definition\Exception\InvalidConfigurationException
      */
-    public function it_should_store_the_created_consumers()
+    public function it_throws_an_exception_on_unsupported_strategy()
+    {
+        $config = [
+            'consumers' => [
+                'process2' => [
+                    'processor' => 'My\\Processor',
+                    'retry' => [
+                        'attempts' => 2,
+                        'strategy' => 'missing',
+                    ],
+                ],
+            ],
+        ];
+
+        $this->load($config);
+    }
+
+    /**
+     * @test
+     */
+    public function it_should_create_exchange_definitions()
     {
         $this->load([
-            'consumers' => [
-                'process1' => ['processor' => 'My\\Processor'],
-                'process2' => ['processor' => 'My\\Processor'],
+            'exchanges' => [
+                'foo' => [
+                    'dlx' => false
+                ],
+                'bar' => [
+                    'name' => 'foobar',
+                    'type' => ExchangeInterface::TYPE_FANOUT,
+                    'connection' => 'conn2',
+                    'passive' => true,
+                    'arguments' => [
+                        'x-ha-policy' => 'all',
+                    ],
+                    'dlx' => [
+                        'name' => 'dead_bars',
+                        'type' => ExchangeInterface::TYPE_TOPIC,
+                    ]
+                ],
             ],
         ]);
 
+        // assert first exchange (defaults)
+        $exchangeId = 'tree_house.queue.exchange.foo';
+        $this->assertContainerBuilderHasAlias('tree_house.queue.channel.foo', 'tree_house.queue.channel.conn1');
+        $this->assertContainerBuilderHasServiceDefinitionWithArgument($exchangeId, 1, 'foo');
+        $this->assertContainerBuilderHasServiceDefinitionWithArgument($exchangeId, 2, ExchangeInterface::TYPE_DIRECT);
+        $this->assertContainerBuilderHasServiceDefinitionWithArgument($exchangeId, 3, ExchangeInterface::DURABLE);
+        $this->assertContainerBuilderHasServiceDefinitionWithArgument($exchangeId, 4, []);
+
+        // assert first exchange has no DLX
+        $dlxId = 'tree_house.queue.exchange.foo.dead';
+        $this->assertContainerBuilderNotHasService($dlxId);
+
+        // assert second exchange and its arguments
+        $exchangeId = 'tree_house.queue.exchange.bar';
+        $this->assertContainerBuilderHasAlias('tree_house.queue.channel.bar', 'tree_house.queue.channel.conn2');
+        $this->assertContainerBuilderHasServiceDefinitionWithArgument($exchangeId, 1, 'foobar');
+        $this->assertContainerBuilderHasServiceDefinitionWithArgument($exchangeId, 2, ExchangeInterface::TYPE_FANOUT);
+        $this->assertContainerBuilderHasServiceDefinitionWithArgument($exchangeId, 3, ExchangeInterface::DURABLE | ExchangeInterface::PASSIVE);
+        $this->assertContainerBuilderHasServiceDefinitionWithArgument($exchangeId, 4, ['x-ha-policy' => 'all']);
+
+        // assert DLX for second exchange
+        $dlxId = 'tree_house.queue.exchange.dead_bars';
+        $dlxChannelId = 'tree_house.queue.channel.dead_bars';
+        $this->assertContainerBuilderHasService($dlxId, $this->container->getParameter('tree_house.queue.exchange.class'));
+        $this->assertContainerBuilderHasAlias($dlxChannelId, 'tree_house.queue.channel.conn1');
+        $this->assertContainerBuilderHasServiceDefinitionWithArgument($dlxId, 0, new Reference($dlxChannelId));
+        $this->assertContainerBuilderHasServiceDefinitionWithArgument($dlxId, 1, 'dead_bars');
+        $this->assertContainerBuilderHasServiceDefinitionWithArgument($dlxId, 2, ExchangeInterface::TYPE_TOPIC);
+        $this->assertContainerBuilderHasServiceDefinitionWithArgument($dlxId, 3, ExchangeInterface::DURABLE);
+        $this->assertContainerBuilderHasServiceDefinitionWithArgument($dlxId, 4, []);
+
+        // assert that the created exchanges are stored in a parameter
         $this->assertContainerBuilderHasParameter(
-            'tree_house.queue.consumers',
+            'tree_house.queue.exchanges',
             [
-                'process1' => 'tree_house.queue.consumer.process1',
-                'process2' => 'tree_house.queue.consumer.process2',
+                'foo' => 'tree_house.queue.exchange.foo',
+                'bar' => 'tree_house.queue.exchange.bar',
+                'dead_bars' => 'tree_house.queue.exchange.dead_bars',
             ]
         );
     }

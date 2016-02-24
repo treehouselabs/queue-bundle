@@ -214,6 +214,7 @@ class TreeHouseQueueExtension extends Extension
         $connection = $config['connection'] ?: $container->getParameter('tree_house.queue.default_connection');
         $channelId = sprintf('tree_house.queue.channel.%s', $connection);
         $channelAlias = sprintf('tree_house.queue.channel.%s', $name);
+        $exchangeName = $config['name'] ?: $name;
 
         // add alias if connection is named differently than exchange
         if ($name !== $connection) {
@@ -224,7 +225,7 @@ class TreeHouseQueueExtension extends Extension
         $definition = new Definition($container->getParameter('tree_house.queue.exchange.class'));
         $definition->setFactory([$amqpFactory, 'createExchange']);
         $definition->addArgument(new Reference($channelAlias));
-        $definition->addArgument($name);
+        $definition->addArgument($exchangeName);
         $definition->addArgument($config['type']);
         $definition->addArgument($this->getExchangeFlagsValue($config));
         $definition->addArgument($config['arguments']);
@@ -233,6 +234,15 @@ class TreeHouseQueueExtension extends Extension
         $container->setDefinition($exchangeId, $definition);
 
         $this->exchanges[$name] = $exchangeId;
+
+        if (isset($config['dlx']['enable']) && $config['dlx']['enable']) {
+            if (!isset($config['dlx']['name'])) {
+                $config['dlx']['name'] = sprintf('%s.dead', $exchangeName);
+            }
+
+            $this->createExchangeDefinition($config['dlx']['name'], $config['dlx'], $container);
+        }
+
         return $exchangeId;
     }
 

@@ -271,8 +271,9 @@ EOF
 
     /**
      * @param ArrayNodeDefinition $node
+     * @param bool                $includeDlx
      */
-    private function addExchangeSection(ArrayNodeDefinition $node)
+    private function addExchangeSection(ArrayNodeDefinition $node, $includeDlx = true)
     {
         $node->addDefaultsIfNotSet();
         $node
@@ -287,9 +288,15 @@ EOF
 
         $exchange = $node->children();
         $exchange
+            ->scalarNode('name')
+            ->defaultNull()
+            ->info('The name to create the exchange with in the AMQP broker')
+        ;
+        $exchange
             ->enumNode('type')
             ->values([Exchg::TYPE_DIRECT, Exchg::TYPE_FANOUT, Exchg::TYPE_TOPIC, Exchg::TYPE_HEADERS])
             ->defaultValue(Exchg::TYPE_DIRECT)
+            ->info('The exchange type')
         ;
 
         $exchange->scalarNode('connection')->defaultNull();
@@ -300,19 +307,26 @@ EOF
         $exchange->booleanNode('nowait')->defaultFalse();
         $exchange
             ->arrayNode('arguments')
-             ->normalizeKeys(false)
-             ->prototype('scalar')
-             ->defaultValue([])
+            ->normalizeKeys(false)
+            ->prototype('scalar')
+            ->defaultValue([])
         ;
 
-        $dlx = $exchange
-            ->arrayNode('dlx')
-            ->treatNullLike(['enable' => true])
-            ->treatFalseLike(['enable' => false])
-            ->info('Create a dead letter exchange for this exchange')
-            ->children()
-        ;
-        $dlx->booleanNode('enable')->defaultTrue();
+        if ($includeDlx) {
+            $dlx = $exchange->arrayNode('dlx');
+            $dlx->treatNullLike(['enable' => true]);
+            $dlx->treatFalseLike(['enable' => false]);
+            $dlx->info('Create a dead letter exchange for this exchange');
+
+            $dlx
+                ->children()
+                ->booleanNode('enable')
+                ->defaultTrue()
+            ;
+
+            // copy the entire exchange configuration here
+            $this->addExchangeSection($dlx, false);
+        }
     }
 
     /**
