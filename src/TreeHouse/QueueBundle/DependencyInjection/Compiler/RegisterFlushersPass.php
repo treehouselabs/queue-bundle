@@ -9,13 +9,16 @@ use Symfony\Component\DependencyInjection\Reference;
 
 class RegisterFlushersPass implements CompilerPassInterface
 {
+    /**
+     * @inheritdoc
+     */
     public function process(ContainerBuilder $container)
     {
-        if (!$container->hasDefinition('tree_house.queue.event_listener.queue')) {
+        if (!$container->hasDefinition('tree_house.queue.event_listener.flush')) {
             return;
         }
 
-        $listener = $container->getDefinition('tree_house.queue.event_listener.queue');
+        $listener = $container->getDefinition('tree_house.queue.event_listener.flush');
 
         foreach (['doctrine', 'doctrine_mongodb'] as $id) {
             if ($container->hasDefinition($id)) {
@@ -29,7 +32,7 @@ class RegisterFlushersPass implements CompilerPassInterface
             }
         }
 
-        foreach ($container->findTaggedServiceIds('tree_house.queue.flusher') as $id => list ($tag)) {
+        foreach ($container->findTaggedServiceIds('tree_house.queue.flusher') as $id => list($tag)) {
             $listener->addMethodCall('addFlusher', [new Reference($id)]);
         }
     }

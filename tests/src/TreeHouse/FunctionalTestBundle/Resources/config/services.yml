@@ -1,3 +1,0 @@
-services:
-  test_processor:
-    class: 'TreeHouse\FunctionalTestBundle\Queue\Processor\TestProcessor'

@@ -2,6 +2,9 @@
 
 namespace TreeHouse\QueueBundle;
 
+/**
+ * @codeCoverageIgnore
+ */
 final class QueueEvents
 {
     /**
