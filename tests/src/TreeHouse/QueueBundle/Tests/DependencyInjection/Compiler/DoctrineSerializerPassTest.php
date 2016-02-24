@@ -11,20 +11,11 @@ use TreeHouse\QueueBundle\DependencyInjection\Compiler\DoctrineSerializerPass;
 class DoctrineSerializerPassTest extends AbstractCompilerPassTestCase
 {
     /**
-     * @inheritdoc
-     */
-    protected function setUp()
-    {
-        parent::setUp();
-
-        $this->registerService('tree_house.queue.serializer.doctrine', DoctrineSerializer::class);
-    }
-
-    /**
      * @test
      */
     public function it_removes_serializer_when_doctrine_is_missing()
     {
+        $this->registerService('tree_house.queue.serializer.doctrine', DoctrineSerializer::class);
         $this->compile();
 
         $this->assertContainerBuilderNotHasService('tree_house.queue.serializer.doctrine');
@@ -35,6 +26,7 @@ class DoctrineSerializerPassTest extends AbstractCompilerPassTestCase
      */
     public function it_leaves_serializer_when_doctrine_is_present()
     {
+        $this->registerService('tree_house.queue.serializer.doctrine', DoctrineSerializer::class);
         $this->registerService('doctrine', ManagerRegistry::class);
         $this->compile();
 
