@@ -45,6 +45,11 @@ class TreeHouseQueueExtension extends Extension
     private $consumers = [];
 
     /**
+     * @var array Map that links exchanges with a DLX counterpart
+     */
+    private $dlxs = [];
+
+    /**
      * @inheritdoc
      */
     public function load(array $configs, ContainerBuilder $container)
@@ -240,7 +245,10 @@ class TreeHouseQueueExtension extends Extension
                 $config['dlx']['name'] = sprintf('%s.dead', $exchangeName);
             }
 
-            $this->createExchangeDefinition($config['dlx']['name'], $config['dlx'], $container);
+            $dlxName = $config['dlx']['name'];
+            $dlxId = $this->createExchangeDefinition($dlxName, $config['dlx'], $container);
+
+            $this->dlxs[$name] = $dlxId;
         }
 
         return $exchangeId;
@@ -293,6 +301,13 @@ class TreeHouseQueueExtension extends Extension
 
         $connection = $queue['connection'] ?: $container->getParameter('tree_house.queue.default_connection');
         $channelId = sprintf('tree_house.queue.channel.%s', $connection);
+        $arguments = $queue['arguments'];
+
+        // if there is an exchange with the same name, and it has a DLX configured, set this in the arguments
+        if (!array_key_exists('x-dead-letter-exchange', $arguments) && $dlxId = $this->getDeadLetterExchange($name)) {
+            $dlx = $container->getDefinition($dlxId);
+            $arguments['x-dead-letter-exchange'] = $dlx->getArgument(1);
+        }
 
         // create queue
         $definition = new Definition($container->getParameter('tree_house.queue.queue.class'));
@@ -300,7 +315,7 @@ class TreeHouseQueueExtension extends Extension
         $definition->addArgument(new Reference($channelId));
         $definition->addArgument($queue['name']);
         $definition->addArgument($this->getQueueFlagsValue($queue));
-        $definition->addArgument($queue['arguments']);
+        $definition->addArgument($arguments);
 
         if (empty($queue['bindings'])) {
             // bind to the same exchange
@@ -557,5 +572,19 @@ class TreeHouseQueueExtension extends Extension
         }
 
         return $flags;
+    }
+
+    /**
+     * @param string $name
+     *
+     * @return string|null
+     */
+    private function getDeadLetterExchange($name)
+    {
+        if (isset($this->dlxs[$name])) {
+            return $this->dlxs[$name];
+        }
+
+        return null;
     }
 }

@@ -408,6 +408,11 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
         // assert queue and its arguments
         $queueId = 'tree_house.queue.queue.process2';
         $this->assertContainerBuilderHasService($queueId, $this->container->getParameter('tree_house.queue.queue.class'));
+        $this->assertContainerBuilderHasServiceDefinitionWithArgument($queueId, 0, new Reference('tree_house.queue.channel.conn1'));
+        $this->assertContainerBuilderHasServiceDefinitionWithArgument($queueId, 1, null);
+        $this->assertContainerBuilderHasServiceDefinitionWithArgument($queueId, 2, QueueInterface::DURABLE);
+        $this->assertContainerBuilderHasServiceDefinitionWithArgument($queueId, 3, []);
+        $this->assertContainerBuilderHasServiceDefinitionWithMethodCall($queueId, 'bind', ['process2', null, []]);
 
         // assert message provider and its arguments
         $providerId = 'tree_house.queue.provider.process2';
@@ -432,6 +437,29 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
                 'process2' => 'tree_house.queue.consumer.process2',
             ]
         );
+    }
+
+    /**
+     * @test
+     */
+    public function it_should_connect_consumer_queue_to_existing_dlx()
+    {
+        $config = [
+            'publishers' => [
+                'process1' => [],
+            ],
+            'consumers' => [
+                'process1' => [
+                    'processor' => 'My\\Processor',
+                ],
+            ],
+        ];
+
+        $this->load($config);
+
+        // assert queue and its arguments
+        $queueId = 'tree_house.queue.queue.process1';
+        $this->assertContainerBuilderHasServiceDefinitionWithArgument($queueId, 3, ['x-dead-letter-exchange' => 'process1.dead']);
     }
 
     /**
