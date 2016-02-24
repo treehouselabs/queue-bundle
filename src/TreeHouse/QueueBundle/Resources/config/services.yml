@@ -42,3 +42,11 @@ services:
     abstract: true
     public: false
     class: TreeHouse\QueueBundle\Flusher\DoctrineFlusher
+
+  tree_house.queue.cache.warmer.amqp:
+    public: false
+    class: TreeHouse\QueueBundle\CacheWarmer\AmqpCacheWarmer
+    arguments:
+      - '@service_container'
+    tags:
+      - { name: 'kernel.cache_warmer' }

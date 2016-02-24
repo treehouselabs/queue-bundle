@@ -14,16 +14,6 @@ use TreeHouse\QueueBundle\Flusher\FlushingInterface;
 class RegisterFlushersPassTest extends AbstractCompilerPassTestCase
 {
     /**
-     * @inheritdoc
-     */
-    protected function setUp()
-    {
-        parent::setUp();
-
-        $this->registerService('tree_house.queue.event_listener.flush', FlushListener::class);
-    }
-
-    /**
      * @test
      * @dataProvider getDoctrineServices
      *
@@ -31,6 +21,7 @@ class RegisterFlushersPassTest extends AbstractCompilerPassTestCase
      */
     public function it_registers_doctrine_flushers_automatically($doctrine)
     {
+        $this->registerService('tree_house.queue.event_listener.flush', FlushListener::class);
         $this->registerService($doctrine, ManagerRegistry::class);
 
         $this->compile();
@@ -61,6 +52,8 @@ class RegisterFlushersPassTest extends AbstractCompilerPassTestCase
      */
     public function it_registers_tagged_flushers()
     {
+        $this->registerService('tree_house.queue.event_listener.flush', FlushListener::class);
+
         $definition = new Definition(FlushingInterface::class);
         $definition->addTag('tree_house.queue.flusher');
 
