@@ -122,6 +122,15 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
             'tree_house.queue.default_connection',
             'tree_house.queue.connection.conn1'
         );
+
+        // assert that the created connections are stored in a parameter
+        $this->assertContainerBuilderHasParameter(
+            'tree_house.queue.connections',
+            [
+                'conn1' => 'tree_house.queue.connection.conn1',
+                'conn2' => 'tree_house.queue.connection.conn2',
+            ]
+        );
     }
 
     /**
@@ -187,6 +196,7 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
     {
         $config = [
             'publishers' => [
+                'process1' => [],
                 'process2' => [],
             ],
         ];
@@ -215,6 +225,15 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
         $this->assertContainerBuilderHasService($publisherId, $this->container->getParameter('tree_house.queue.publisher.class'));
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($publisherId, 0, new Reference($exchangeId));
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($publisherId, 1, new Reference($composerId));
+
+        // assert that the created publishers are stored in a parameter
+        $this->assertContainerBuilderHasParameter(
+            'tree_house.queue.publishers',
+            [
+                'process1' => 'tree_house.queue.publisher.process1',
+                'process2' => 'tree_house.queue.publisher.process2',
+            ]
+        );
     }
 
     /**
@@ -363,6 +382,9 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
     {
         $config = [
             'consumers' => [
+                'process1' => [
+                    'processor' => 'My\\Processor',
+                ],
                 'process2' => [
                     'processor' => 'My\\Processor',
                 ],
@@ -389,6 +411,15 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
         $this->assertContainerBuilderHasService($consumerId);
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($consumerId, 0, new Reference($providerId));
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($consumerId, 1, new Reference($processorId));
+
+        // assert that the created consumers are stored in a parameter
+        $this->assertContainerBuilderHasParameter(
+            'tree_house.queue.consumers',
+            [
+                'process1' => 'tree_house.queue.consumer.process1',
+                'process2' => 'tree_house.queue.consumer.process2',
+            ]
+        );
     }
 
     /**
@@ -649,6 +680,15 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
         $this->assertContainerBuilderHasServiceDefinitionWithMethodCall($queueId, 'bind', ['xchg1', 'foo', ['x-foo' => 'bar']]);
         $this->assertContainerBuilderHasServiceDefinitionWithMethodCall($queueId, 'bind', ['xchg1', 'bar', ['x-foo' => 'bar']]);
         $this->assertContainerBuilderHasServiceDefinitionWithMethodCall($queueId, 'bind', ['xchg2', 'foo', []]);
+
+        // assert that the created queues are stored in a parameter
+        $this->assertContainerBuilderHasParameter(
+            'tree_house.queue.queues',
+            [
+                'foo' => 'tree_house.queue.queue.foo',
+                'bar' => 'tree_house.queue.queue.bar',
+            ]
+        );
     }
 
     /**

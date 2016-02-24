@@ -20,6 +20,31 @@ use TreeHouse\Queue\Processor\Retry\RetryProcessor;
 class TreeHouseQueueExtension extends Extension
 {
     /**
+     * @var string[]
+     */
+    private $connections = [];
+
+    /**
+     * @var string[]
+     */
+    private $exchanges = [];
+
+    /**
+     * @var string[]
+     */
+    private $queues = [];
+
+    /**
+     * @var string[]
+     */
+    private $publishers = [];
+
+    /**
+     * @var string[]
+     */
+    private $consumers = [];
+
+    /**
      * @inheritdoc
      */
     public function load(array $configs, ContainerBuilder $container)
@@ -36,6 +61,8 @@ class TreeHouseQueueExtension extends Extension
         $this->loadConsumers($config, $container);
         $this->loadExchanges($config, $container);
         $this->loadQueues($config, $container);
+
+        $this->setCreatedDefinitionsParameters($container);
 
         if (!$config['auto_flush']) {
             $container->removeDefinition('tree_house.queue.event_listener.queue');
@@ -98,14 +125,9 @@ class TreeHouseQueueExtension extends Extension
      */
     private function loadPublishers(array $config, ContainerBuilder $container)
     {
-        $publishers = [];
         foreach ($config['publishers'] as $name => $publisher) {
-            $publisherId = $this->createPublisherDefinition($name, $publisher, $container);
-            $publishers[$name] = $publisherId;
+            $this->createPublisherDefinition($name, $publisher, $container);
         }
-
-        // set a parameter to reference the publishers
-        $container->setParameter('tree_house.queue.publishers', $publishers);
     }
 
     /**
@@ -114,15 +136,9 @@ class TreeHouseQueueExtension extends Extension
      */
     private function loadConsumers(array $config, ContainerBuilder $container)
     {
-        $consumers = [];
-
         foreach ($config['consumers'] as $name => $consumer) {
-            $consumerId = $this->createConsumerDefinition($name, $consumer, $container);
-            $consumers[$name] = $consumerId;
+            $this->createConsumerDefinition($name, $consumer, $container);
         }
-
-        // set a parameter to reference the consumers
-        $container->setParameter('tree_house.queue.consumers', $consumers);
     }
 
     /**
@@ -131,8 +147,8 @@ class TreeHouseQueueExtension extends Extension
      */
     private function loadExchanges(array $config, ContainerBuilder $container)
     {
-        foreach ($config['exchanges'] as $name => $queue) {
-            $this->createExchangeDefinition($name, $queue, $container);
+        foreach ($config['exchanges'] as $name => $exchange) {
+            $this->createExchangeDefinition($name, $exchange, $container);
         }
     }
 
@@ -179,6 +195,8 @@ class TreeHouseQueueExtension extends Extension
         $channelId = sprintf('tree_house.queue.channel.%s', $name);
         $container->setDefinition($channelId, $definition);
 
+        $this->connections[$name] = $connectionId;
+
         return $connectionId;
     }
 
@@ -214,6 +232,7 @@ class TreeHouseQueueExtension extends Extension
         $exchangeId = sprintf('tree_house.queue.exchange.%s', $name);
         $container->setDefinition($exchangeId, $definition);
 
+        $this->exchanges[$name] = $exchangeId;
         return $exchangeId;
     }
 
@@ -245,6 +264,8 @@ class TreeHouseQueueExtension extends Extension
 
         $consumerId = sprintf('tree_house.queue.consumer.%s', $name);
         $container->setDefinition($consumerId, $definition);
+
+        $this->consumers[$name] = $consumerId;
 
         return $consumerId;
     }
@@ -294,6 +315,8 @@ class TreeHouseQueueExtension extends Extension
         $queueId = sprintf('tree_house.queue.queue.%s', $name);
         $container->setDefinition($queueId, $definition);
 
+        $this->queues[$name] = $queueId;
+
         return $queueId;
     }
 
@@ -320,6 +343,8 @@ class TreeHouseQueueExtension extends Extension
         $publisher->addArgument(new Reference($composerId));
 
         $container->setDefinition($publisherId, $publisher);
+
+        $this->publishers[$name] = $publisherId;
 
         return $publisherId;
     }
@@ -462,6 +487,18 @@ class TreeHouseQueueExtension extends Extension
         $strategy->setPublic(false);
 
         return $strategy;
+    }
+
+    /**
+     * @param ContainerBuilder $container
+     */
+    private function setCreatedDefinitionsParameters(ContainerBuilder $container)
+    {
+        $container->setParameter('tree_house.queue.connections', $this->connections);
+        $container->setParameter('tree_house.queue.exchanges', $this->exchanges);
+        $container->setParameter('tree_house.queue.queues', $this->queues);
+        $container->setParameter('tree_house.queue.publishers', $this->publishers);
+        $container->setParameter('tree_house.queue.consumers', $this->consumers);
     }
 
     /**
