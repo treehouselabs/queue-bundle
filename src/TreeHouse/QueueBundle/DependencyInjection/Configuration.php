@@ -2,11 +2,11 @@
 
 namespace TreeHouse\QueueBundle\DependencyInjection;
 
+use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use TreeHouse\Queue\Amqp\ExchangeInterface as Exchg;
 use Symfony\Component\Config\Definition\Builder\ArrayNodeDefinition;
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 use Symfony\Component\Config\Definition\ConfigurationInterface;
-use Symfony\Component\Form\Exception\InvalidConfigurationException;
 
 class Configuration implements ConfigurationInterface
 {
@@ -16,30 +16,49 @@ class Configuration implements ConfigurationInterface
     public function getConfigTreeBuilder()
     {
         $treeBuilder = new TreeBuilder();
-        $rootNode    = $treeBuilder->root('tree_house_queue');
-        $rootNode
-            ->children()
-                ->enumNode('driver')
-                    ->values(['amqp', 'php-amqplib'])
-                    ->defaultValue('amqp')
-                    ->validate()
-                        ->ifTrue(function ($value) {
-                            return $value === 'php-amqplib';
-                        })
-                        ->thenInvalid('Driver for php-amqplib is not yet implemented')
-                    ->end()
-                ->end()
-                ->booleanNode('auto_flush')
-                    ->defaultTrue()
-                    ->info('Whether to automatically flush the Doctrine object manager when processing messages')
-                ->end()
-            ->end()
+        $rootNode = $treeBuilder->root('tree_house_queue');
+        $children = $rootNode->children();
+
+        $children
+            ->enumNode('driver')
+            ->values(['amqp', 'php-amqplib'])
+            ->defaultValue('amqp')
+            ->validate()
+            ->ifTrue(function ($value) {
+                return $value === 'php-amqplib';
+            })
+            ->thenInvalid('Driver for php-amqplib is not yet implemented')
+        ;
+
+        $children
+            ->booleanNode('auto_flush')
+            ->defaultTrue()
+            ->info('Whether to automatically flush the Doctrine object manager when processing messages')
         ;
 
         $this->addConnectionsSection($rootNode);
         $this->addPublishersSection($rootNode);
         $this->addConsumersSection($rootNode);
-        $this->addQueuesSection($rootNode);
+
+        /** @var ArrayNodeDefinition $exchanges */
+        $exchanges = $rootNode
+            ->fixXmlConfig('exchange')
+            ->children()
+            ->arrayNode('exchanges')
+            ->prototype('array')
+        ;
+
+        $this->addExchangeSection($exchanges);
+
+        /** @var ArrayNodeDefinition $queues */
+        $queues = $rootNode
+            ->fixXmlConfig('queue')
+            ->children()
+            ->arrayNode('queues')
+            ->prototype('array')
+        ;
+
+        $this->addQueueSection($queues);
 
         return $treeBuilder;
     }
@@ -49,16 +68,22 @@ class Configuration implements ConfigurationInterface
      */
     private function addConnectionsSection(ArrayNodeDefinition $rootNode)
     {
-        $rootNode
-            ->fixXmlConfig('connection')
-            ->children()
-                ->scalarNode('default_connection')->defaultNull()->end()
-                ->arrayNode('connections')
-                    ->isRequired()
-                    ->requiresAtLeastOneElement()
-                    ->cannotBeEmpty()
-                    ->info('List of connections. The key becomes the connection name. If no key is set (ie: a numeric list) the name is set to "default"')
-                    ->example(<<<EOF
+        $rootNode->fixXmlConfig('connection');
+        $children = $rootNode->children();
+
+        $children
+            ->scalarNode('default_connection')
+            ->defaultNull()
+        ;
+
+        /** @var ArrayNodeDefinition $connections */
+        $connections = $children
+            ->arrayNode('connections')
+            ->isRequired()
+            ->requiresAtLeastOneElement()
+            ->cannotBeEmpty()
+            ->info('List of connections. The key becomes the connection name.')
+            ->example(<<<EOF
 # long
 connections:
   conn1:
@@ -66,12 +91,12 @@ connections:
   conn2:
     host: otherhost
 
-# short, will be named default
+# short
 connection:
-    host: rabbitmqhost
-    port: 1234
+  host: rabbitmqhost
+  port: 1234
 
-# shorter, will be named default
+# shorter
 connection: rabbitmqhost
 
 # mixing it:
@@ -81,56 +106,50 @@ connections:
     host: otherhost
     port: 1234
 
-# WRONG: connections need to have a name
+# numeric name index
 connections:
   -
     host: localhost
+
+# named index
+connections:
+  -
+    name: conn1
+    host: localhost
 EOF
-                    )
-
-                    ->beforeNormalization()
-                        ->ifArray()
-                        ->then(function ($value) {
-                            $conns = [];
-                            foreach ($value as $key => $conn) {
-                                // it was either a string, or multiple key-less entries
-                                if (is_numeric($key)) {
-                                    if (sizeof($value) > 1) {
-                                        throw new InvalidConfigurationException(
-                                            sprintf('Connections need to be a list of key-value pairs')
-                                        );
-                                    }
-
-                                    // key becomes 'default'
-                                    $key = 'default';
-                                }
-
-                                // string becomes the host
-                                if (is_string($conn)) {
-                                    $conn = [
-                                        'host' => $conn
-                                    ];
-                                }
-
-                                $conns[$key] = $conn;
-                            }
-
-                            return $conns;
-                        })
-                    ->end()
-                    ->prototype('array')
-                        ->addDefaultsIfNotSet()
-                        ->children()
-                            ->scalarNode('host')->defaultValue('localhost')->end()
-                            ->scalarNode('port')->defaultValue(5672)->end()
-                            ->scalarNode('user')->defaultValue('guest')->end()
-                            ->scalarNode('pass')->defaultValue('guest')->end()
-                            ->scalarNode('vhost')->defaultValue('/')->end()
-                        ->end()
-                    ->end()
-                ->end()
-            ->end()
+            )
         ;
+
+        $connections
+            ->beforeNormalization()
+            ->ifArray()
+            ->then(function ($value) {
+                $conns = [];
+                foreach ($value as $key => $conn) {
+                    // string becomes the host
+                    if (is_string($conn)) {
+                        $conn = [
+                            'host' => $conn
+                        ];
+                    }
+
+                    $conns[$key] = $conn;
+                }
+
+                return $conns;
+            })
+        ;
+
+        /** @var ArrayNodeDefinition $prototype */
+        $prototype = $connections->prototype('array');
+        $prototype->addDefaultsIfNotSet();
+
+        $connection = $prototype->children();
+        $connection->scalarNode('host');
+        $connection->scalarNode('port')->defaultValue(5672);
+        $connection->scalarNode('user')->defaultValue('guest');
+        $connection->scalarNode('pass')->defaultValue('guest');
+        $connection->scalarNode('vhost')->defaultValue('/');
     }
 
     /**
@@ -138,66 +157,38 @@ EOF
      */
     private function addPublishersSection(ArrayNodeDefinition $rootNode)
     {
-        $rootNode
-            ->fixXmlConfig('publisher')
-            ->children()
-                ->arrayNode('publishers')
-                    ->prototype('array')
-                        ->addDefaultsIfNotSet()
-                        ->children()
-                            ->scalarNode('serializer')
-                                ->defaultValue('@tree_house.queue.serializer.php')
-                                ->beforeNormalization()
-                                    ->ifInArray(['php', 'json', 'doctrine'])
-                                    ->then(function ($value) {
-                                        return sprintf('@tree_house.queue.serializer.%s', $value);
-                                    })
-                                ->end()
-                                ->validate()
-                                    ->ifTrue(function ($value) {
-                                        substr($value, 0, 1) !== '@' && !class_exists($value);
-                                    })
-                                    ->thenInvalid('Serializer class "%s" does not exist')
-                                ->end()
-                            ->end()
+        $rootNode->fixXmlConfig('publisher');
+        $children = $rootNode->children();
 
-                            ->scalarNode('composer')
-                                ->defaultValue('%tree_house.queue.composer.default.class%')
-                            ->end()
+        /** @var ArrayNodeDefinition $publishers */
+        $publishers = $children->arrayNode('publishers')->prototype('array');
+        $publishers->addDefaultsIfNotSet();
 
-                            ->arrayNode('exchange')
-                                ->addDefaultsIfNotSet()
-                                ->beforeNormalization()
-                                    ->ifString()
-                                    ->then(function ($value) {
-                                        return [
-                                            'type' => $value,
-                                        ];
-                                    })
-                                ->end()
-                                ->children()
-                                    ->enumNode('type')
-                                        ->values([Exchg::TYPE_DIRECT, Exchg::TYPE_FANOUT, Exchg::TYPE_TOPIC, Exchg::TYPE_HEADERS])
-                                        ->defaultValue(Exchg::TYPE_DIRECT)
-                                    ->end()
-                                    ->scalarNode('connection')->defaultNull()->end()
-                                    ->booleanNode('durable')->defaultTrue()->end()
-                                    ->booleanNode('passive')->defaultFalse()->end()
-                                    ->booleanNode('auto_delete')->defaultFalse()->end()
-                                    ->booleanNode('internal')->defaultFalse()->end()
-                                    ->booleanNode('nowait')->defaultFalse()->end()
-                                    ->arrayNode('arguments')
-                                        ->normalizeKeys(false)
-                                        ->prototype('scalar')
-                                        ->defaultValue([])
-                                    ->end()
-                                ->end()
-                            ->end()
-                        ->end()
-                    ->end()
-                ->end()
+        $publisher = $publishers->children();
+        $publisher
+            ->scalarNode('serializer')
+            ->defaultValue('@tree_house.queue.serializer.php')
+            ->beforeNormalization()
+                ->ifInArray(['php', 'json', 'doctrine'])
+                ->then(function ($value) {
+                    return sprintf('@tree_house.queue.serializer.%s', $value);
+                })
+            ->end()
+            ->validate()
+                ->ifTrue(function ($value) {
+                    substr($value, 0, 1) !== '@' && !class_exists($value);
+                })
+                ->thenInvalid('Serializer class "%s" does not exist')
             ->end()
         ;
+
+        $publisher
+            ->scalarNode('composer')
+            ->defaultValue('%tree_house.queue.composer.default.class%')
+        ;
+
+        $exchange = $publisher->arrayNode('exchange');
+        $this->addExchangeSection($exchange);
     }
 
     /**
@@ -205,158 +196,197 @@ EOF
      */
     private function addConsumersSection(ArrayNodeDefinition $rootNode)
     {
-        $rootNode
-            ->fixXmlConfig('consumer')
-            ->children()
-                ->arrayNode('consumers')
-                    ->prototype('array')
-                        ->addDefaultsIfNotSet()
-                        ->children()
-                            ->scalarNode('processor')
-                                ->validate()
-                                    ->ifTrue(function ($value) {
-                                        substr($value, 0, 1) !== '@' && !class_exists($value);
-                                    })
-                                    ->thenInvalid('Processor class "%s" does not exist')
-                                ->end()
-                            ->end()
+        $rootNode->fixXmlConfig('consumer');
+        $children = $rootNode->children();
 
-                            ->arrayNode('queue')
-                                ->addDefaultsIfNotSet()
-                                ->fixXmlConfig('binding')
-                                ->children()
-                                    ->scalarNode('name')->defaultNull()->end()
-                                    ->scalarNode('connection')->defaultNull()->end()
-                                    ->booleanNode('durable')->defaultTrue()->end()
-                                    ->booleanNode('passive')->defaultFalse()->end()
-                                    ->booleanNode('exclusive')->defaultFalse()->end()
-                                    ->booleanNode('auto_delete')->defaultFalse()->end()
-                                    ->arrayNode('bindings')
-                                        ->requiresAtLeastOneElement()
-                                        ->prototype('array')
-                                            ->beforeNormalization()
-                                            ->always()
-                                            ->then(function ($binding) {
-                                                // use string as exchange
-                                                if (is_string($binding)) {
-                                                    $binding = ['exchange' => $binding];
-                                                }
+        /** @var ArrayNodeDefinition $consumers */
+        $consumers = $children->arrayNode('consumers')->prototype('array');
+        $consumers->addDefaultsIfNotSet();
 
-                                                // if multiple routing keys are given, make a copy for each one
-                                                if (!isset($binding['routing_keys'])) {
-                                                    $binding['routing_keys'] = isset($binding['routing_key']) ? $binding['routing_key'] : [];
-                                                    unset($binding['routing_key']);
-                                                }
+        // processor
+        $consumer = $consumers->children();
+        $consumer
+            ->scalarNode('processor')
+            ->validate()
+            ->ifTrue(function ($value) {
+                substr($value, 0, 1) !== '@' && !class_exists($value);
+            })
+            ->thenInvalid('Processor class "%s" does not exist')
+        ;
 
-                                                if (is_scalar($binding['routing_keys'])) {
-                                                    $binding['routing_keys'] = [$binding['routing_keys']];
-                                                }
+        // queue
+        $queue = $consumer->arrayNode('queue');
+        $this->addQueueSection($queue);
 
-                                                return $binding;
-                                            })
-                                            ->end()
+        // retry
+        $retry = $consumer->arrayNode('retry');
+        $retry
+            ->addDefaultsIfNotSet()
+            ->beforeNormalization()
+            ->ifTrue(function ($value) {
+                return is_scalar($value);
+            })
+            ->then(function ($attempts) {
+                if (!is_numeric($attempts)) {
+                    throw new InvalidConfigurationException('When using a scalar for "retry", it must be numeric, eg: "retry: 3"');
+                }
 
-                                            ->addDefaultsIfNotSet()
-                                            ->fixXmlConfig('routing_key')
-                                            ->children()
-                                                ->scalarNode('exchange')->isRequired()->end()
-                                                ->arrayNode('routing_keys')
-                                                    ->prototype('scalar')->defaultValue([])->end()
-                                                ->end()
-                                                ->arrayNode('arguments')
-                                                    ->normalizeKeys(false)
-                                                    ->prototype('scalar')->defaultValue([])->end()
-                                                ->end()
-                                            ->end()
-                                        ->end()
-                                    ->end()
-                                    ->arrayNode('arguments')
-                                        ->normalizeKeys(false)
-                                        ->prototype('scalar')->defaultValue([])->end()
-                                    ->end()
-                                ->end()
-                            ->end()
+                return [
+                    'attempts' => (int) $attempts,
+                ];
+            })
+        ;
 
-                            ->scalarNode('attempts')
-                                ->defaultValue(2)
-                                ->validate()
-                                    ->ifTrue(function ($value) {
-                                        return !($value > 0);
-                                    })
-                                    ->thenInvalid('Expecting a positive number, got "%s"')
-                                ->end()
-                            ->end()
-                        ->end()
-                    ->end()
-                ->end()
-            ->end()
+        $retryConfig = $retry->children();
+        $retryConfig
+            ->integerNode('attempts')
+            ->defaultValue(1)
+            ->validate()
+            ->ifTrue(function ($value) {
+                return !($value > 0);
+            })
+            ->thenInvalid('Expecting a positive number, got "%s"')
+        ;
+
+        // retry strategy
+        $strategy = $retryConfig->arrayNode('strategy');
+        $strategy
+            ->addDefaultsIfNotSet()
+            ->beforeNormalization()
+            ->ifString()
+            ->then(function ($type) {
+                return [
+                    'type' => $type,
+                ];
+            })
+        ;
+
+        $strategyConfig = $strategy->children();
+        $strategyConfig
+            ->enumNode('type')
+            ->values(['backoff', 'deprioritize'])
+            ->defaultValue('backoff')
         ;
     }
 
     /**
-     * @param ArrayNodeDefinition $rootNode
+     * @param ArrayNodeDefinition $node
      */
-    private function addQueuesSection(ArrayNodeDefinition $rootNode)
+    private function addExchangeSection(ArrayNodeDefinition $node)
     {
-        $rootNode
-            ->fixXmlConfig('queue')
+        $node->addDefaultsIfNotSet();
+        $node
+            ->beforeNormalization()
+            ->ifString()
+            ->then(function ($value) {
+                return [
+                    'type' => $value,
+                ];
+            })
+        ;
+
+        $exchange = $node->children();
+        $exchange
+            ->enumNode('type')
+            ->values([Exchg::TYPE_DIRECT, Exchg::TYPE_FANOUT, Exchg::TYPE_TOPIC, Exchg::TYPE_HEADERS])
+            ->defaultValue(Exchg::TYPE_DIRECT)
+        ;
+
+        $exchange->scalarNode('connection')->defaultNull();
+        $exchange->booleanNode('durable')->defaultTrue();
+        $exchange->booleanNode('passive')->defaultFalse();
+        $exchange->booleanNode('auto_delete')->defaultFalse();
+        $exchange->booleanNode('internal')->defaultFalse();
+        $exchange->booleanNode('nowait')->defaultFalse();
+        $exchange
+            ->arrayNode('arguments')
+             ->normalizeKeys(false)
+             ->prototype('scalar')
+             ->defaultValue([])
+        ;
+
+        $dlx = $exchange
+            ->arrayNode('dlx')
+            ->treatNullLike(['enable' => true])
+            ->treatFalseLike(['enable' => false])
+            ->info('Create a dead letter exchange for this exchange')
             ->children()
-                ->arrayNode('queues')
-                    ->prototype('array')
-                        ->fixXmlConfig('binding')
-                        ->children()
-                            ->scalarNode('name')->defaultNull()->end()
-                            ->scalarNode('connection')->defaultNull()->end()
-                            ->booleanNode('durable')->defaultTrue()->end()
-                            ->booleanNode('passive')->defaultFalse()->end()
-                            ->booleanNode('exclusive')->defaultFalse()->end()
-                            ->booleanNode('auto_delete')->defaultFalse()->end()
-                            ->arrayNode('bindings')
-                                ->requiresAtLeastOneElement()
-                                ->prototype('array')
-                                    ->beforeNormalization()
-                                        ->always()
-                                        ->then(function ($binding) {
-                                            // use string as exchange
-                                            if (is_string($binding)) {
-                                                $binding = ['exchange' => $binding];
-                                            }
+        ;
+        $dlx->booleanNode('enable')->defaultTrue();
+    }
 
-                                            // if multiple routing keys are given, make a copy for each one
-                                            if (!isset($binding['routing_keys'])) {
-                                                $binding['routing_keys'] = isset($binding['routing_key']) ? $binding['routing_key'] : [];
-                                                unset($binding['routing_key']);
-                                            }
+    /**
+     * @param ArrayNodeDefinition $node
+     */
+    private function addQueueSection(ArrayNodeDefinition $node)
+    {
+        $node->addDefaultsIfNotSet();
+        $node->fixXmlConfig('binding');
 
-                                            if (is_scalar($binding['routing_keys'])) {
-                                                $binding['routing_keys'] = [$binding['routing_keys']];
-                                            }
+        $queue = $node->children();
 
-                                            return $binding;
-                                        })
-                                    ->end()
-                                    ->addDefaultsIfNotSet()
-                                    ->fixXmlConfig('routing_key')
-                                    ->children()
-                                        ->scalarNode('exchange')->isRequired()->end()
-                                        ->arrayNode('routing_keys')
-                                            ->prototype('scalar')->defaultValue([])->end()
-                                        ->end()
-                                        ->arrayNode('arguments')
-                                            ->normalizeKeys(false)
-                                            ->prototype('scalar')->defaultValue([])->end()
-                                        ->end()
-                                    ->end()
-                                ->end()
-                            ->end()
-                            ->arrayNode('arguments')
-                                ->normalizeKeys(false)
-                                ->prototype('scalar')->defaultValue([])->end()
-                            ->end()
-                        ->end()
-                    ->end()
-                ->end()
-            ->end()
+        $queue->scalarNode('name')->defaultNull();
+        $queue->scalarNode('connection')->defaultNull();
+        $queue->booleanNode('durable')->defaultTrue();
+        $queue->booleanNode('passive')->defaultFalse();
+        $queue->booleanNode('exclusive')->defaultFalse();
+        $queue->booleanNode('auto_delete')->defaultFalse();
+
+        $queue
+            ->arrayNode('arguments')
+            ->normalizeKeys(false)
+            ->prototype('scalar')
+            ->defaultValue([])
+        ;
+
+        $bindings = $queue->arrayNode('bindings');
+        $bindings->requiresAtLeastOneElement();
+
+        /** @var ArrayNodeDefinition $binding */
+        $binding = $bindings->prototype('array');
+        $binding
+            ->beforeNormalization()
+            ->always()
+            ->then(function ($binding) {
+                // use string as exchange
+                if (is_string($binding)) {
+                    $binding = ['exchange' => $binding];
+                }
+
+                // if multiple routing keys are given, make a copy for each one
+                if (!isset($binding['routing_keys'])) {
+                    $binding['routing_keys'] = isset($binding['routing_key']) ? $binding['routing_key'] : [];
+                    unset($binding['routing_key']);
+                }
+
+                if (is_scalar($binding['routing_keys'])) {
+                    $binding['routing_keys'] = [$binding['routing_keys']];
+                }
+
+                return $binding;
+            })
+        ;
+
+        $binding
+            ->addDefaultsIfNotSet()
+            ->fixXmlConfig('routing_key')
+        ;
+
+        $bindingOptions = $binding->children();
+        $bindingOptions
+            ->scalarNode('exchange')
+            ->isRequired()
+        ;
+        $bindingOptions
+            ->arrayNode('routing_keys')
+            ->prototype('scalar')
+            ->defaultValue([])
+        ;
+        $bindingOptions
+            ->arrayNode('arguments')
+            ->normalizeKeys(false)
+            ->prototype('scalar')
+            ->defaultValue([])
         ;
     }
 }

@@ -16,6 +16,22 @@ For a complete list of releases, see the [releases page][0].
 * Updated required PHP version to 5.6
 * Updated `treehouselabs/queue` dependency to `0.1.0`. See those [release notes](https://github.com/treehouselabs/queue-bundle/releases/tag/v0.1.0)
   for an overview of breaking changes.
+* Renamed `tree_house.queue.event_listener.queue` to `tree_house.queue.event_listener.flush`
+* Replaced `attempts` config in consumers with a more extended `retry` config:
+
+  **Before:**
+  ```yaml
+  consumers:
+    foo:
+      attempts: 2
+  ```
+
+  **After:**
+  ```yaml
+  consumers:
+    foo:
+      retry: 2
+  ```
 
 
 ## v0.0.1

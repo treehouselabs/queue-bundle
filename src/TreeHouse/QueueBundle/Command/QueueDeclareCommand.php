@@ -7,7 +7,6 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use TreeHouse\Queue\Consumer;
-use TreeHouse\Queue\Message\Provider\MessageProviderInterface;
 use TreeHouse\Queue\Message\Publisher\MessagePublisherInterface;
 
 class QueueDeclareCommand extends ContainerAwareCommand
@@ -38,7 +37,7 @@ HELP
             // At the moment this results in the publishers exchange being declared automatically.
             // TODO The publisher should be able to init/declare its exchange explicitly.
 
-            $output->writeln(sprintf('=> declared exchange <comment>%s</comment>',$name));
+            $output->writeln(sprintf('=> declared exchange <comment>%s</comment>', $name));
         }
 
         $consumers = $this->loadConsumers($input->getOption('queue'));
@@ -46,20 +45,10 @@ HELP
             // At the moment this results in the consumers queue being declared automatically.
             // TODO The consumer should be able to init/declare its queue explicitly.
 
-            $output->writeln(sprintf('=> declared queue <comment>%s</comment>',$name));
+            $output->writeln(sprintf('=> declared queue <comment>%s</comment>', $name));
         }
 
         $output->writeln('<info>All exchanges and queues are declared</info>');
-    }
-
-    /**
-     * @param string $name
-     *
-     * @return MessageProviderInterface
-     */
-    protected function getQueueFactory($name)
-    {
-        return $this->getContainer()->get(sprintf('tree_house.queue.factory.%s', $name));
     }
 
     /**

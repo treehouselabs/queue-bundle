@@ -7,6 +7,9 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
 
 class DoctrineSerializerPass implements CompilerPassInterface
 {
+    /**
+     * @inheritdoc
+     */
     public function process(ContainerBuilder $container)
     {
         if (!$container->hasDefinition('doctrine')) {

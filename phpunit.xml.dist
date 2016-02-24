@@ -19,15 +19,15 @@
     </testsuite>
   </testsuites>
 
+  <listeners>
+    <listener class="Mockery\Adapter\Phpunit\TestListener"/>
+  </listeners>
+
   <filter>
     <whitelist>
       <directory suffix=".php">./src</directory>
     </whitelist>
   </filter>
-
-  <php>
-    <server name="KERNEL_DIR" value="./tests/app"/>
-  </php>
 
   <logging>
     <log type="coverage-text" target="php://stdout"/>
