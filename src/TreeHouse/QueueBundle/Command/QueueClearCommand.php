@@ -8,8 +8,7 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\ConfirmationQuestion;
-use TreeHouse\Queue\Message\Message;
-use TreeHouse\Queue\Message\Provider\MessageProviderInterface;
+use TreeHouse\Queue\Amqp\QueueInterface;
 
 class QueueClearCommand extends ContainerAwareCommand
 {
@@ -49,36 +48,36 @@ HELP
             }
         }
 
-        $name     = $input->getArgument('queue');
-        $provider = $this->getMessageProvider($name);
-
-        $callback = null;
-        if ($output->getVerbosity() > $output::VERBOSITY_VERBOSE) {
-            $callback = function (OutputInterface $output, Message $message) {
-                $output->writeln(sprintf('<option=bold;fg=red>- %s</>', $message->getId()));
-            };
-        }
+        $name = $input->getArgument('queue');
+        $queue = $this->getQueue($name);
+        $verbose = $output->getVerbosity() > $output::VERBOSITY_VERBOSE;
 
         $output->writeln(sprintf('Purging queue <info>%s</info>', $name));
 
-        while ($message = $provider->get()) {
-            if ($callback) {
-                $callback($output, $message);
-            }
+        $purged = 0;
+        while ($envelope = $queue->get()) {
+            ++$purged;
 
-            $provider->ack($message);
+            if ($verbose) {
+                $output->writeln(sprintf('<option=bold;fg=red>- %s</option=bold;fg=red>', $envelope->getDeliveryTag()));
+            } else {
+                $output->write(str_pad(sprintf('Purged <info>%d</info> messages', $purged), 50, ' ', STR_PAD_RIGHT));
+                $output->write("\x0D");
+            }
         }
 
-        $output->writeln(sprintf('Purged queue <info>%s</info>', $name));
+        $output->writeln(str_pad(sprintf('Purged <info>%d</info> messages', $purged), 50, ' ', STR_PAD_RIGHT));
+
+        return 0;
     }
 
     /**
      * @param string $name
      *
-     * @return MessageProviderInterface
+     * @return QueueInterface
      */
-    protected function getMessageProvider($name)
+    protected function getQueue($name)
     {
-        return $this->getContainer()->get(sprintf('tree_house.queue.provider.%s', $name));
+        return $this->getContainer()->get(sprintf('tree_house.queue.queue.%s', $name));
     }
 }

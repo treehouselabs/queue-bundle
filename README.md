@@ -17,9 +17,11 @@ composer require treehouselabs/queue-bundle
 ```
 
 
-## Usage
+## Documentation
 
-To be documented..
+1. [Setup][doc-setup]
+
+[doc-setup]: /docs/01-setup.md
 
 
 ## Security

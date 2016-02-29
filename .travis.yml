@@ -18,8 +18,6 @@ matrix:
   fast_finish: true
   include:
     - php: 7.0
-      env: SYMFONY_VERSION=2.6.*
-    - php: 7.0
       env: SYMFONY_VERSION=2.7.*
     - php: 7.0
       env: SYMFONY_VERSION=2.8.*

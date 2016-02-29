@@ -7,13 +7,10 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\EventDispatcher\EventDispatcherInterface;
-use TreeHouse\Queue\Message\Message;
-use TreeHouse\Queue\Message\Provider\MessageProviderInterface;
-use TreeHouse\Queue\Message\Publisher\MessagePublisherInterface;
-use TreeHouse\Queue\Processor\ProcessorInterface;
-use TreeHouse\QueueBundle\Event\ConsumeEvent;
-use TreeHouse\QueueBundle\QueueEvents;
+use TreeHouse\Queue\Consumer\ConsumerInterface;
+use TreeHouse\Queue\Event\ConsumeEvent;
+use TreeHouse\Queue\Event\ConsumeExceptionEvent;
+use TreeHouse\Queue\QueueEvents;
 
 class QueueConsumeCommand extends ContainerAwareCommand
 {
@@ -41,99 +38,71 @@ class QueueConsumeCommand extends ContainerAwareCommand
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        $name      = $input->getArgument('queue');
+        $name = $input->getArgument('queue');
         $batchSize = intval($input->getOption('batch-size'));
-        $wait      = intval($input->getOption('wait'));
-        $limit     = intval($input->getOption('limit'));
+        $wait = intval($input->getOption('wait'));
+        $limit = intval($input->getOption('limit'));
         $maxMemory = intval($input->getOption('max-memory')) * 1024 * 1024;
-        $maxTime   = intval($input->getOption('max-time'));
+        $maxTime = intval($input->getOption('max-time'));
 
-        /** @var EventDispatcherInterface $dispatcher */
-        $dispatcher = $this->getContainer()->get('event_dispatcher');
+        $startTime = time();
+        $minDuration = 15;
 
         $this->output = $output;
-
-        $provider   = $this->getMessageProvider($name);
-        $processor  = $this->getProcessor($name);
-
         $this->output(sprintf('Consuming from <info>%s</info> queue', $name));
 
-        $start       = time();
-        $minDuration = 15;
+        $consumer = $this->getConsumer($name);
+        $dispatcher = $consumer->getEventDispatcher();
+        $dispatcher->addListener(QueueEvents::CONSUME_MESSAGE, [$this, 'onConsumeMessage']);
+        $dispatcher->addListener(QueueEvents::CONSUMED_MESSAGE, [$this, 'onMessageConsumed']);
+        $dispatcher->addListener(QueueEvents::CONSUME_EXCEPTION, [$this, 'onConsumeException']);
 
         $processed = 0;
         while (true) {
-            $provider->consume(function(Message $message) use ($output, $processor, $provider, $name, $dispatcher) {
-                $dispatcher->dispatch(QueueEvents::PRE_CONSUME, new ConsumeEvent($message));
-
+            try {
+                $consumer->consume();
+            } catch (\Exception $e) {
                 $this->output(
-                    sprintf(
-                        '<comment>[%s]</comment> Processing payload <info>%s</info>',
-                        $message->getId(),
-                        $this->getPayloadOutput($message, 20, $output->getVerbosity() > OutputInterface::VERBOSITY_VERBOSE)
-                    )
+                    sprintf('Uncaught %s thrown by consumer, shutting down gracefully', get_class($e)),
+                    $output::VERBOSITY_VERBOSE
                 );
 
-                try {
-                    $res = $processor->process($message);
-                } catch (\Exception $e) {
-                    // if we have a publisher for this type of message,
-                    // we nack the message and requeue it at the end of the queue so
-                    // that we don't block other (correct) messages
-                    $publisher = $this->getMessagePublisher($name);
-                    if ($publisher) {
-                        $provider->nack($message, false);
-                        $publisher->publish($message);
-                    }
+                $this->shutdown($consumer, $startTime, $minDuration);
 
-                    throw $e;
-                }
-
-                if (!is_bool($res)) {
-                    throw new \LogicException(
-                        sprintf(
-                            '<error>Did you forget to return a boolean value in the %s processor?</error>',
-                            get_class($processor)
-                        )
-                    );
-                }
-
-                $provider->ack($message);
-
-                $this->output(
-                    sprintf('<comment>[%s]</comment> processed with result: <info>%s</info>', $message->getId(), json_encode($res))
-                );
-
-                $dispatcher->dispatch(QueueEvents::POST_CONSUME, new ConsumeEvent($message));
-            });
+                throw $e;
+            }
 
             // see if batch is completed
             if (++$processed % $batchSize === 0) {
-                $this->flush();
+                $this->output('Batch completed', OutputInterface::VERBOSITY_VERBOSE);
+                $this->flush($consumer);
             }
 
+            // check for maximum number of processed messages
             if (($limit > 0) && ($processed >= $limit)) {
                 $this->output(
                     sprintf('Maximum number of messages consumed (%d)', $limit),
-                    OutputInterface::VERBOSITY_VERBOSE
+                    $output::VERBOSITY_VERBOSE
                 );
 
                 break;
             }
 
+            // check for max memory usage
             if (($maxMemory > 0) && memory_get_usage(true) > $maxMemory) {
                 $this->output(
                     sprintf('Memory peak of %dMB reached', $maxMemory / 1024 / 1024),
-                    OutputInterface::VERBOSITY_VERBOSE
+                    $output::VERBOSITY_VERBOSE
                 );
 
                 break;
             }
 
-            if (($maxTime > 0) && ((time() - $start) > $maxTime)) {
+            // check for execution time
+            if (($maxTime > 0) && ((time() - $startTime) > $maxTime)) {
                 $this->output(
                     sprintf('Maximum execution time of %ds reached', $maxTime),
-                    OutputInterface::VERBOSITY_VERBOSE
+                    $output::VERBOSITY_VERBOSE
                 );
 
                 break;
@@ -143,75 +112,87 @@ class QueueConsumeCommand extends ContainerAwareCommand
             usleep($wait);
         }
 
-        // flush remaining changes
-        $this->flush();
+        $this->shutdown($consumer, $startTime, $minDuration);
+    }
 
-        // make sure consumer doesn't quit to quickly, or supervisor will mark it as a failed restart,
-        // and putting the process in FATAL state.
-        $duration = time() - $start;
-        if ($duration < $minDuration) {
-            $time = $minDuration - $duration;
-            $this->output(
-                sprintf('Sleeping for %d seconds so consumer has run for %d seconds', $time, $minDuration),
-                OutputInterface::VERBOSITY_VERBOSE
-            );
-            sleep($time);
-        }
+    /**
+     * @param ConsumeEvent $event
+     */
+    public function onConsumeMessage(ConsumeEvent $event)
+    {
+        $envelope = $event->getEnvelope();
+        $verbose = $this->output->getVerbosity() > OutputInterface::VERBOSITY_VERBOSE;
 
-        $this->output('Shutting down consumer');
+        $this->output(
+            sprintf(
+                '<comment>[%s]</comment> Processing payload <info>%s</info>',
+                $envelope->getDeliveryTag(),
+                $this->getPayloadOutput($envelope->getBody(), 20, $verbose)
+            )
+        );
+    }
+
+    /**
+     * @param ConsumeEvent $event
+     */
+    public function onMessageConsumed(ConsumeEvent $event)
+    {
+        $envelope = $event->getEnvelope();
+
+        $this->output(
+            sprintf(
+                '<comment>[%s]</comment> processed with result: <info>%s</info>',
+                $envelope->getDeliveryTag(),
+                json_encode($event->getResult())
+            )
+        );
+    }
+
+    /**
+     * @param ConsumeExceptionEvent $event
+     */
+    public function onConsumeException(ConsumeExceptionEvent $event)
+    {
+        $envelope = $event->getEnvelope();
+        $exception = $event->getException();
+
+        $this->output(
+            sprintf(
+                '<comment>[%s]</comment> raised <info>%s</info>: <error>%s</error>',
+                $envelope->getDeliveryTag(),
+                get_class($exception),
+                $exception->getMessage()
+            )
+        );
     }
 
     /**
      * @param string $name
      *
-     * @return MessageProviderInterface
+     * @return ConsumerInterface
      */
-    protected function getMessageProvider($name)
+    private function getConsumer($name)
     {
-        return $this->getContainer()->get(sprintf('tree_house.queue.provider.%s', $name));
+        return $this->getContainer()->get(sprintf('tree_house.queue.consumer.%s', $name));
     }
 
     /**
-     * @param string $name
+     * Dispatches flush event.
      *
-     * @return ProcessorInterface
+     * @param ConsumerInterface $consumer
      */
-    protected function getProcessor($name)
+    private function flush(ConsumerInterface $consumer)
     {
-        return $this->getContainer()->get(sprintf('tree_house.queue.processor.%s', $name));
+        $consumer->getEventDispatcher()->dispatch(QueueEvents::CONSUME_FLUSH);
     }
 
     /**
-     * @param string $name
-     *
-     * @return MessagePublisherInterface|null
+     * @param string $message
+     * @param int    $threshold
      */
-    protected function getMessagePublisher($name)
+    private function output($message, $threshold = OutputInterface::VERBOSITY_NORMAL)
     {
-        if ($this->getContainer()->has(sprintf('tree_house.queue.publisher.%s', $name))) {
-            return $this->getContainer()->get(sprintf('tree_house.queue.publisher.%s', $name));
-        }
-
-        return null;
-    }
-
-    /**
-     * Dispatches flush event
-     */
-    protected function flush()
-    {
-        $this->output('Batch completed', OutputInterface::VERBOSITY_VERBOSE);
-
-        $this->getContainer()->get('event_dispatcher')->dispatch(QueueEvents::FLUSH);
-    }
-
-    /**
-     * @param string  $message
-     * @param integer $verbosity
-     */
-    protected function output($message, $verbosity = OutputInterface::VERBOSITY_NORMAL)
-    {
-        if ($this->output->getVerbosity() < $verbosity) {
+        if ($this->output->getVerbosity() < $threshold) {
             return;
         }
 
@@ -219,16 +200,14 @@ class QueueConsumeCommand extends ContainerAwareCommand
     }
 
     /**
-     * @param Message $message
-     * @param integer $offset
-     * @param bool    $fullPayload
+     * @param string $payload
+     * @param int    $offset
+     * @param bool   $fullPayload
      *
      * @return string
      */
-    protected function getPayloadOutput(Message $message, $offset = 0, $fullPayload = false)
+    private function getPayloadOutput($payload, $offset = 0, $fullPayload = false)
     {
-        $payload = $message->getBody();
-
         if ($fullPayload === true) {
             return $payload;
         }
@@ -239,5 +218,32 @@ class QueueConsumeCommand extends ContainerAwareCommand
         }
 
         return $payload;
+    }
+
+    /**
+     * @param ConsumerInterface $consumer
+     * @param int $startTime
+     * @param int $minDuration
+     */
+    private function shutdown($consumer, $startTime, $minDuration)
+    {
+        $this->output('Shutting down consumer');
+
+        // flush remaining changes
+        $this->flush($consumer);
+
+        // make sure consumer doesn't quit to quickly, or supervisor will mark it as a failed restart,
+        // and putting the process in FATAL state.
+        $duration = time() - $startTime;
+        if ($duration < $minDuration) {
+            $time = $minDuration - $duration;
+
+            $this->output(
+                sprintf('Sleeping for %d seconds so consumer has run for %d seconds', $time, $minDuration),
+                OutputInterface::VERBOSITY_VERBOSE
+            );
+
+            sleep($time);
+        }
     }
 }

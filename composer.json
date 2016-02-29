@@ -14,14 +14,14 @@
   "require": {
     "php": ">=5.6",
     "psr/log": "^1.0",
-    "symfony/symfony": "^2.6|^3.0",
+    "symfony/symfony": "^2.7|^3.0",
     "doctrine/orm": "^2.3",
-    "treehouselabs/queue": "^v0.1.0"
+    "treehouselabs/queue": "dev-master"
   },
   "require-dev": {
     "ext-amqp": "^1.7",
     "phpunit/phpunit": "^5.0",
-    "mockery/mockery": "^0.9",
+    "mockery/mockery": "^0.9.4",
     "matthiasnoback/symfony-dependency-injection-test": "^0.7.6"
   },
   "autoload": {

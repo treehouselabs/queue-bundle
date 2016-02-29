@@ -247,6 +247,11 @@ EOF
             })
             ->thenInvalid('Expecting a positive number, got "%s"')
         ;
+        $retryConfig
+            ->scalarNode('publisher')
+            ->defaultNull()
+            ->info('Name of the publisher to use for retrying messages. Defaults to the same name as the consumer')
+        ;
 
         // retry strategy
         $strategy = $retryConfig->arrayNode('strategy');
@@ -272,8 +277,9 @@ EOF
     /**
      * @param ArrayNodeDefinition $node
      * @param bool                $includeDlx
+     * @param bool                $includeDelay
      */
-    private function addExchangeSection(ArrayNodeDefinition $node, $includeDlx = true)
+    private function addExchangeSection(ArrayNodeDefinition $node, $includeDlx = true, $includeDelay = true)
     {
         $node->addDefaultsIfNotSet();
         $node
@@ -312,6 +318,14 @@ EOF
             ->defaultValue([])
         ;
 
+        if ($includeDelay) {
+            $exchange
+                ->booleanNode('delay')
+                ->defaultTrue()
+                ->info('Whether to enable delayed messages for this exchange')
+            ;
+        }
+
         if ($includeDlx) {
             $dlx = $exchange->arrayNode('dlx');
             $dlx->treatNullLike(['enable' => true]);
@@ -325,7 +339,13 @@ EOF
             ;
 
             // copy the entire exchange configuration here
-            $this->addExchangeSection($dlx, false);
+            $this->addExchangeSection($dlx, false, false);
+
+            $queue = $dlx
+                ->children()
+                ->arrayNode('queue')
+            ;
+            $this->addQueueSection($queue);
         }
     }
 
@@ -345,6 +365,11 @@ EOF
         $queue->booleanNode('passive')->defaultFalse();
         $queue->booleanNode('exclusive')->defaultFalse();
         $queue->booleanNode('auto_delete')->defaultFalse();
+        $queue
+            ->scalarNode('dlx')
+            ->defaultNull()
+            ->info('The name of the dead letter exchange that this queue should link to')
+        ;
 
         $queue
             ->arrayNode('arguments')
