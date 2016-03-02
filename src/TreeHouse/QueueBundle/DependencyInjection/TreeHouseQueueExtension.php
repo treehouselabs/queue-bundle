@@ -86,7 +86,7 @@ class TreeHouseQueueExtension extends Extension
             sprintf('tree_house.queue.driver.%s.factory', $config['driver'])
         );
 
-        $classes = ['connection', 'channel', 'exchange', 'queue', 'provider', 'publisher', 'factory'];
+        $classes = ['connection', 'channel', 'exchange', 'queue', 'publisher', 'factory'];
         foreach ($classes as $class) {
             $name = sprintf('tree_house.queue.%s.class', $class);
             if (!$container->hasParameter($name)) {
@@ -219,11 +219,21 @@ class TreeHouseQueueExtension extends Extension
         $connection = $config['connection'] ?: $container->getParameter('tree_house.queue.default_connection');
         $channelId = sprintf('tree_house.queue.channel.%s', $connection);
         $channelAlias = sprintf('tree_house.queue.channel.%s', $name);
-        $exchangeName = $config['name'] ?: $name;
 
         // add alias if connection is named differently than exchange
         if ($name !== $connection) {
             $container->setAlias($channelAlias, $channelId);
+        }
+
+        $exchangeName = $config['name'] ?: $name;
+        $exchangeType = $config['type'];
+        $exchangeFlags = $this->getExchangeFlagsValue($config);
+        $exchangeArguments = $config['arguments'];
+
+        // optionally create a delayed message exchange counterpart
+        if (isset($config['delay']) && $config['delay']) {
+            $exchangeArguments['x-delayed-type'] = $exchangeType;
+            $exchangeType = ExchangeInterface::TYPE_DELAYED;
         }
 
         // create exchange
@@ -231,15 +241,16 @@ class TreeHouseQueueExtension extends Extension
         $definition->setFactory([$amqpFactory, 'createExchange']);
         $definition->addArgument(new Reference($channelAlias));
         $definition->addArgument($exchangeName);
-        $definition->addArgument($config['type']);
-        $definition->addArgument($this->getExchangeFlagsValue($config));
-        $definition->addArgument($config['arguments']);
+        $definition->addArgument($exchangeType);
+        $definition->addArgument($exchangeFlags);
+        $definition->addArgument($exchangeArguments);
 
         $exchangeId = sprintf('tree_house.queue.exchange.%s', $name);
         $container->setDefinition($exchangeId, $definition);
 
         $this->exchanges[$name] = $exchangeId;
 
+        // optionally create a dead letter exchange counterpart
         if (isset($config['dlx']['enable']) && $config['dlx']['enable']) {
             if (!isset($config['dlx']['name'])) {
                 $config['dlx']['name'] = sprintf('%s.dead', $exchangeName);
@@ -249,6 +260,28 @@ class TreeHouseQueueExtension extends Extension
             $dlxId = $this->createExchangeDefinition($dlxName, $config['dlx'], $container);
 
             $this->dlxs[$name] = $dlxId;
+
+            // create queue to route this DLX to
+            $queue = $config['dlx']['queue'];
+            if (!isset($queue['name'])) {
+                $queue['name'] = $dlxName;
+            }
+
+            $hasBinding = false;
+            foreach ($queue['bindings'] as $binding) {
+                if ($binding['exchange'] === $dlxName) {
+                    $hasBinding = true;
+                    break;
+                }
+            }
+            if (!$hasBinding) {
+                $queue['bindings'][] = [
+                    'exchange' => $dlxName,
+                    'arguments' => [],
+                ];
+            }
+
+            $this->createQueueDefinition($dlxName, $queue, $container);
         }
 
         return $exchangeId;
@@ -263,22 +296,23 @@ class TreeHouseQueueExtension extends Extension
      */
     private function createConsumerDefinition($name, array $config, ContainerBuilder $container)
     {
+        // create the queue
         $queue = $config['queue'];
-        $queueId = $this->createQueueDefinition($name, $queue, $container);
 
-        // create the message provider
-        $definition = new Definition($container->getParameter('tree_house.queue.provider.class'));
-        $definition->addArgument(new Reference($queueId));
-        $providerId = sprintf('tree_house.queue.provider.%s', $name);
-        $container->setDefinition($providerId, $definition);
+        if (!isset($queue['name'])) {
+            $queue['name'] = $name;
+        }
+
+        $queueId = $this->createQueueDefinition($name, $queue, $container);
 
         // create the processor
         $processorId = $this->createProcessorDefinition($name, $config, $container);
 
         // create the consumer
         $definition = new DefinitionDecorator('tree_house.queue.consumer.prototype');
-        $definition->addArgument(new Reference($providerId));
+        $definition->addArgument(new Reference($queueId));
         $definition->addArgument(new Reference($processorId));
+        $definition->addArgument(new Reference('tree_house.queue.event_dispatcher'));
 
         $consumerId = sprintf('tree_house.queue.consumer.%s', $name);
         $container->setDefinition($consumerId, $definition);
@@ -304,9 +338,8 @@ class TreeHouseQueueExtension extends Extension
         $arguments = $queue['arguments'];
 
         // if there is an exchange with the same name, and it has a DLX configured, set this in the arguments
-        if (!array_key_exists('x-dead-letter-exchange', $arguments) && $dlxId = $this->getDeadLetterExchange($name)) {
-            $dlx = $container->getDefinition($dlxId);
-            $arguments['x-dead-letter-exchange'] = $dlx->getArgument(1);
+        if (!array_key_exists('x-dead-letter-exchange', $arguments) && $dlx = $this->getDeadLetterExchange($name, $queue, $container)) {
+            $arguments['x-dead-letter-exchange'] = $dlx;
         }
 
         // create queue
@@ -449,7 +482,7 @@ class TreeHouseQueueExtension extends Extension
         }
 
         // decorate the process with a retry processor if needd
-        $service = $this->decorateRetryProcessor($name, $config['retry'], $service);
+        $service = $this->decorateRetryProcessor($name, $config['retry'], $service, $container);
 
         if (is_string($service)) {
             $container->setAlias($processorId, $service);
@@ -464,18 +497,26 @@ class TreeHouseQueueExtension extends Extension
      * @param string            $name
      * @param array             $config
      * @param string|Definition $service
+     * @param ContainerBuilder  $container
      *
      * @return Definition
      */
-    private function decorateRetryProcessor($name, array $config, $service)
+    private function decorateRetryProcessor($name, array $config, $service, ContainerBuilder $container)
     {
         // skip if we only use 1 attempt
         if ($config['attempts'] < 2) {
             return $service;
         }
 
+        $publisherName = $config['publisher'] ?: $name;
+        $publisherId = sprintf('tree_house.queue.publisher.%s', $publisherName);
+
+        if (!$container->hasDefinition($publisherId)) {
+            throw new InvalidConfigurationException(sprintf('There is no publisher named "%s" configured.', $publisherName));
+        }
+
         // decorate the processor
-        $strategy = $this->createRetryStrategyDefinition($name, $config['strategy']);
+        $strategy = $this->createRetryStrategyDefinition($config['strategy'], $publisherId);
 
         $retry = new Definition(RetryProcessor::class);
         $retry->addArgument(is_string($service) ? new Reference($service) : $service);
@@ -487,22 +528,22 @@ class TreeHouseQueueExtension extends Extension
     }
 
     /**
-     * @param string $name
      * @param array  $config
+     * @param string $publisherId
      *
      * @return Definition
      */
-    private function createRetryStrategyDefinition($name, array $config)
+    private function createRetryStrategyDefinition(array $config, $publisherId)
     {
         switch ($config['type']) {
             case 'backoff':
                 $strategy = new Definition(BackoffStrategy::class);
-                $strategy->addArgument(new Reference(sprintf('tree_house.queue.publisher.%s', $name)));
+                $strategy->addArgument(new Reference($publisherId));
 
                 break;
             case 'deprioritize':
                 $strategy = new Definition(DeprioritizeStrategy::class);
-                $strategy->addArgument(new Reference(sprintf('tree_house.queue.publisher.%s', $name)));
+                $strategy->addArgument(new Reference($publisherId));
 
                 break;
             default:
@@ -524,6 +565,28 @@ class TreeHouseQueueExtension extends Extension
         $container->setParameter('tree_house.queue.queues', $this->queues);
         $container->setParameter('tree_house.queue.publishers', $this->publishers);
         $container->setParameter('tree_house.queue.consumers', $this->consumers);
+    }
+
+    /**
+     * @param string           $name
+     * @param array            $config
+     * @param ContainerBuilder $container
+     *
+     * @return null|string
+     */
+    private function getDeadLetterExchange($name, array $config, ContainerBuilder $container)
+    {
+        if (isset($config['dlx'])) {
+            return $config['dlx'];
+        }
+
+        if (!isset($this->dlxs[$name])) {
+            return null;
+        }
+
+        $dlx = $container->getDefinition($this->dlxs[$name]);
+
+        return $dlx->getArgument(1);
     }
 
     /**
@@ -572,19 +635,5 @@ class TreeHouseQueueExtension extends Extension
         }
 
         return $flags;
-    }
-
-    /**
-     * @param string $name
-     *
-     * @return string|null
-     */
-    private function getDeadLetterExchange($name)
-    {
-        if (isset($this->dlxs[$name])) {
-            return $this->dlxs[$name];
-        }
-
-        return null;
     }
 }
