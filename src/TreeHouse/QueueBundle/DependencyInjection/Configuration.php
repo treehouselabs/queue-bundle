@@ -305,6 +305,11 @@ EOF
             ->info('The exchange type')
         ;
 
+        $exchange
+            ->booleanNode('auto_declare')
+            ->info('Whether to automatically declare the exchange on cache warmup. Only enable this when you have configure access to the exchange')
+        ;
+
         $exchange->scalarNode('connection')->defaultNull();
         $exchange->booleanNode('durable')->defaultTrue();
         $exchange->booleanNode('passive')->defaultFalse();
@@ -358,6 +363,11 @@ EOF
         $node->fixXmlConfig('binding');
 
         $queue = $node->children();
+
+        $queue
+            ->booleanNode('auto_declare')
+            ->info('Whether to automatically declare the queue on cache warmup. Only enable this when you have configure access to the queue')
+        ;
 
         $queue->scalarNode('name')->defaultNull();
         $queue->scalarNode('connection')->defaultNull();

@@ -3,6 +3,7 @@
 namespace TreeHouse\QueueBundle\Tests\DependencyInjection;
 
 use Matthias\SymfonyDependencyInjectionTest\PhpUnit\AbstractExtensionTestCase;
+use Matthias\SymfonyDependencyInjectionTest\PhpUnit\DefinitionHasMethodCallConstraint;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Reference;
@@ -228,6 +229,7 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($exchangeId, 2, ExchangeInterface::TYPE_DELAYED);
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($exchangeId, 3, ExchangeInterface::DURABLE);
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($exchangeId, 4, ['x-delayed-type' => ExchangeInterface::TYPE_DIRECT]);
+        $this->assertContainerBuilderHasServiceDefinitionWithMethodCall($exchangeId, 'declareExchange');
 
         // assert dead letter exchange and its arguments
         $dlxId = 'tree_house.queue.exchange.process2.dead';
@@ -238,6 +240,7 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($dlxId, 2, ExchangeInterface::TYPE_DIRECT);
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($dlxId, 3, ExchangeInterface::DURABLE);
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($dlxId, 4, []);
+        $this->assertContainerBuilderHasServiceDefinitionWithMethodCall($dlxId, 'declareExchange');
 
         // assert that a message composer and serializer have been created with an alias
         $serializerId = 'tree_house.queue.serializer.process2';
@@ -384,15 +387,17 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($exchangeId, 2, ExchangeInterface::TYPE_FANOUT);
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($exchangeId, 3, ExchangeInterface::PASSIVE | ExchangeInterface::DURABLE);
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($exchangeId, 4, ['x-ha-policy' => 'all']);
+        $this->assertContainerBuilderHasServiceDefinitionWithMethodCall($exchangeId, 'declareExchange');
 
         // assert dead letter exchange and its arguments
         $dlxId = 'tree_house.queue.exchange.dead_foos';
         $dlxChannelId = 'tree_house.queue.channel.dead_foos';
         $this->assertContainerBuilderHasService($dlxId, $this->container->getParameter('tree_house.queue.exchange.class'));
-        $this->assertContainerBuilderHasAlias($dlxChannelId, 'tree_house.queue.channel.conn1');
+        $this->assertContainerBuilderHasAlias($dlxChannelId, 'tree_house.queue.channel.conn2');
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($dlxId, 0, new Reference($dlxChannelId));
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($dlxId, 1, 'dead_foos');
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($dlxId, 2, ExchangeInterface::TYPE_TOPIC);
+        $this->assertContainerBuilderHasServiceDefinitionWithMethodCall($dlxId, 'declareExchange');
     }
 
     /**
@@ -424,6 +429,7 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($exchangeId, 2, ExchangeInterface::TYPE_DIRECT);
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($exchangeId, 3, ExchangeInterface::DURABLE);
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($exchangeId, 4, []);
+        $this->assertContainerBuilderHasServiceDefinitionWithMethodCall($exchangeId, 'declareExchange');
     }
 
     /**
@@ -451,6 +457,7 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($queueId, 1, 'process2');
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($queueId, 2, QueueInterface::DURABLE);
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($queueId, 3, []);
+        $this->assertContainerBuilderHasServiceDefinitionWithMethodCall($queueId, 'declareQueue');
         $this->assertContainerBuilderHasServiceDefinitionWithMethodCall($queueId, 'bind', ['process2', null, []]);
 
         // assert processor
@@ -540,6 +547,7 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($queueId, 1, 'foo');
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($queueId, 2, QueueInterface::PASSIVE | QueueInterface::EXCLUSIVE | QueueInterface::AUTODELETE);
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($queueId, 3, ['x-match' => 'all']);
+        $this->assertContainerBuilderHasServiceDefinitionWithMethodCall($queueId, 'declareQueue');
 
         // assert bindings
         $this->assertContainerBuilderHasServiceDefinitionWithMethodCall($queueId, 'bind', ['xchg1', 'foo', ['x-foo' => 'bar']]);
@@ -767,6 +775,7 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($exchangeId, 2, ExchangeInterface::TYPE_DELAYED);
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($exchangeId, 3, ExchangeInterface::DURABLE);
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($exchangeId, 4, ['x-delayed-type' => ExchangeInterface::TYPE_DIRECT]);
+        $this->assertContainerBuilderHasServiceDefinitionWithMethodCall($exchangeId, 'declareExchange');
 
         // assert first exchange has no DLX
         $dlxId = 'tree_house.queue.exchange.foo.dead';
@@ -779,25 +788,28 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($exchangeId, 2, ExchangeInterface::TYPE_DELAYED);
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($exchangeId, 3, ExchangeInterface::DURABLE | ExchangeInterface::PASSIVE);
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($exchangeId, 4, ['x-delayed-type' => ExchangeInterface::TYPE_FANOUT, 'x-ha-policy' => 'all']);
+        $this->assertContainerBuilderHasServiceDefinitionWithMethodCall($exchangeId, 'declareExchange');
 
         // assert DLX for second exchange
         $dlxId = 'tree_house.queue.exchange.dead_bars';
         $dlxChannelId = 'tree_house.queue.channel.dead_bars';
         $this->assertContainerBuilderHasService($dlxId, $this->container->getParameter('tree_house.queue.exchange.class'));
-        $this->assertContainerBuilderHasAlias($dlxChannelId, 'tree_house.queue.channel.conn1');
+        $this->assertContainerBuilderHasAlias($dlxChannelId, 'tree_house.queue.channel.conn2');
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($dlxId, 0, new Reference($dlxChannelId));
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($dlxId, 1, 'dead_bars');
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($dlxId, 2, ExchangeInterface::TYPE_TOPIC);
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($dlxId, 3, ExchangeInterface::DURABLE);
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($dlxId, 4, []);
+        $this->assertContainerBuilderHasServiceDefinitionWithMethodCall($dlxId, 'declareExchange');
 
         // assert queue for DLX
         $queueId = 'tree_house.queue.queue.dead_bars';
         $this->assertContainerBuilderHasService($queueId);
-        $this->assertContainerBuilderHasServiceDefinitionWithArgument($queueId, 0, new Reference('tree_house.queue.channel.conn1'));
+        $this->assertContainerBuilderHasServiceDefinitionWithArgument($queueId, 0, new Reference('tree_house.queue.channel.conn2'));
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($queueId, 1, 'dead_bars');
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($queueId, 2, QueueInterface::DURABLE);
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($queueId, 3, []);
+        $this->assertContainerBuilderHasServiceDefinitionWithMethodCall($queueId, 'declareQueue');
         $this->assertContainerBuilderHasServiceDefinitionWithMethodCall($queueId, 'bind', ['dead_bars', null, []]);
 
         // assert that the created exchanges are stored in a parameter
@@ -809,6 +821,26 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
                 'dead_bars' => 'tree_house.queue.exchange.dead_bars',
             ]
         );
+    }
+
+    /**
+     * @test
+     */
+    public function it_should_not_auto_declare_exchange()
+    {
+        $config = [
+            'exchanges' => [
+                'foo' => [
+                    'auto_declare' => false,
+                ],
+            ],
+        ];
+
+        $this->load($config);
+
+        $exchangeId = 'tree_house.queue.exchange.foo';
+        $definition = $this->container->findDefinition($exchangeId);
+        $this->assertThat($definition, $this->logicalNot(new DefinitionHasMethodCallConstraint('declareExchange')));
     }
 
     /**
@@ -866,6 +898,7 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($queueId, 1, 'foo');
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($queueId, 2, QueueInterface::DURABLE);
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($queueId, 3, ['x-match' => 'all']);
+        $this->assertContainerBuilderHasServiceDefinitionWithMethodCall($queueId, 'declareQueue');
         $this->assertContainerBuilderHasServiceDefinitionWithMethodCall($queueId, 'bind', ['xchg1', null, []]);
 
         // assert queue 2
@@ -907,6 +940,26 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
         $queueId = 'tree_house.queue.queue.foo';
         $this->assertContainerBuilderHasService($queueId);
         $this->assertContainerBuilderHasServiceDefinitionWithMethodCall($queueId, 'bind', ['foo', null, []]);
+    }
+
+    /**
+     * @test
+     */
+    public function it_should_not_auto_declare_queue()
+    {
+        $config = [
+            'queues' => [
+                'foo' => [
+                    'auto_declare' => false,
+                ],
+            ],
+        ];
+
+        $this->load($config);
+
+        $queueId = 'tree_house.queue.queue.foo';
+        $definition = $this->container->findDefinition($queueId);
+        $this->assertThat($definition, $this->logicalNot(new DefinitionHasMethodCallConstraint('declareQueue')));
     }
 
     /**

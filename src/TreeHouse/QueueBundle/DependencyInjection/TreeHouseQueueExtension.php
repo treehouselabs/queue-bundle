@@ -229,6 +229,7 @@ class TreeHouseQueueExtension extends Extension
         $exchangeType = $config['type'];
         $exchangeFlags = $this->getExchangeFlagsValue($config);
         $exchangeArguments = $config['arguments'];
+        $autoDeclare = isset($config['auto_declare']) ? $config['auto_declare'] : true;
 
         // optionally create a delayed message exchange counterpart
         if (isset($config['delay']) && $config['delay']) {
@@ -245,6 +246,10 @@ class TreeHouseQueueExtension extends Extension
         $definition->addArgument($exchangeFlags);
         $definition->addArgument($exchangeArguments);
 
+        if ($autoDeclare) {
+            $definition->addMethodCall('declareExchange');
+        }
+
         $exchangeId = sprintf('tree_house.queue.exchange.%s', $name);
         $container->setDefinition($exchangeId, $definition);
 
@@ -256,6 +261,14 @@ class TreeHouseQueueExtension extends Extension
                 $config['dlx']['name'] = sprintf('%s.dead', $exchangeName);
             }
 
+            if (!isset($config['dlx']['connection'])) {
+                $config['dlx']['connection'] = $connection;
+            }
+
+            if (!isset($config['dlx']['auto_declare'])) {
+                $config['dlx']['auto_declare'] = $autoDeclare;
+            }
+
             $dlxName = $config['dlx']['name'];
             $dlxId = $this->createExchangeDefinition($dlxName, $config['dlx'], $container);
 
@@ -265,6 +278,10 @@ class TreeHouseQueueExtension extends Extension
             $queue = $config['dlx']['queue'];
             if (!isset($queue['name'])) {
                 $queue['name'] = $dlxName;
+            }
+
+            if (!isset($queue['connection'])) {
+                $queue['connection'] = $connection;
             }
 
             $hasBinding = false;
@@ -324,21 +341,22 @@ class TreeHouseQueueExtension extends Extension
 
     /**
      * @param string           $name
-     * @param array            $queue
+     * @param array            $config
      * @param ContainerBuilder $container
      *
      * @return string
      */
-    private function createQueueDefinition($name, array $queue, ContainerBuilder $container)
+    private function createQueueDefinition($name, array $config, ContainerBuilder $container)
     {
         $amqpFactory = new Reference('tree_house.amqp.factory');
 
-        $connection = $queue['connection'] ?: $container->getParameter('tree_house.queue.default_connection');
+        $connection = $config['connection'] ?: $container->getParameter('tree_house.queue.default_connection');
         $channelId = sprintf('tree_house.queue.channel.%s', $connection);
-        $arguments = $queue['arguments'];
+        $arguments = $config['arguments'];
+        $autoDeclare = isset($config['auto_declare']) ? $config['auto_declare'] : true;
 
         // if there is an exchange with the same name, and it has a DLX configured, set this in the arguments
-        if (!array_key_exists('x-dead-letter-exchange', $arguments) && $dlx = $this->getDeadLetterExchange($name, $queue, $container)) {
+        if (!array_key_exists('x-dead-letter-exchange', $arguments) && $dlx = $this->getDeadLetterExchange($name, $config, $container)) {
             $arguments['x-dead-letter-exchange'] = $dlx;
         }
 
@@ -346,20 +364,24 @@ class TreeHouseQueueExtension extends Extension
         $definition = new Definition($container->getParameter('tree_house.queue.queue.class'));
         $definition->setFactory([$amqpFactory, 'createQueue']);
         $definition->addArgument(new Reference($channelId));
-        $definition->addArgument($queue['name']);
-        $definition->addArgument($this->getQueueFlagsValue($queue));
+        $definition->addArgument($config['name']);
+        $definition->addArgument($this->getQueueFlagsValue($config));
         $definition->addArgument($arguments);
 
-        if (empty($queue['bindings'])) {
+        if ($autoDeclare) {
+            $definition->addMethodCall('declareQueue');
+        }
+
+        if (empty($config['bindings'])) {
             // bind to the same exchange
-            $queue['bindings'][] = [
+            $config['bindings'][] = [
                 'exchange' => $name,
                 'routing_keys' => [],
                 'arguments' => [],
             ];
         }
 
-        foreach ($queue['bindings'] as $binding) {
+        foreach ($config['bindings'] as $binding) {
             // if nothing is set, bind without routing key
             if (empty($binding['routing_keys'])) {
                 $binding['routing_keys'] = [null];
