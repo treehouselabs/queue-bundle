@@ -16,6 +16,7 @@ For a complete list of releases, see the [releases page][0].
 * Added cache warmer to declare exchanges/queues
 * Added configuration to automatically create dead letter exchanges
 * Improved exception handling and graceful shutdowns in `queue:consume` command
+* Added option to enable/disable auto_declare exchange/queue (default true)
 
 
 ### Breaking changes
