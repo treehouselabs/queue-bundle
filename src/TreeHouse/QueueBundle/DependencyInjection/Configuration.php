@@ -333,15 +333,8 @@ EOF
 
         if ($includeDlx) {
             $dlx = $exchange->arrayNode('dlx');
-            $dlx->treatNullLike(['enable' => true]);
-            $dlx->treatFalseLike(['enable' => false]);
             $dlx->info('Create a dead letter exchange for this exchange');
-
-            $dlx
-                ->children()
-                ->booleanNode('enable')
-                ->defaultTrue()
-            ;
+            $dlx->canBeDisabled();
 
             // copy the entire exchange configuration here
             $this->addExchangeSection($dlx, false, false);

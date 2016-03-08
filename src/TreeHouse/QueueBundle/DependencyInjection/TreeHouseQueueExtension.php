@@ -256,7 +256,7 @@ class TreeHouseQueueExtension extends Extension
         $this->exchanges[$name] = $exchangeId;
 
         // optionally create a dead letter exchange counterpart
-        if (isset($config['dlx']['enable']) && $config['dlx']['enable']) {
+        if (isset($config['dlx']['enabled']) && $config['dlx']['enabled']) {
             if (!isset($config['dlx']['name'])) {
                 $config['dlx']['name'] = sprintf('%s.dead', $exchangeName);
             }
