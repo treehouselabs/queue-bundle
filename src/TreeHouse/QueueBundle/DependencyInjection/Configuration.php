@@ -45,6 +45,7 @@ class Configuration implements ConfigurationInterface
             ->fixXmlConfig('exchange')
             ->children()
             ->arrayNode('exchanges')
+            ->useAttributeAsKey('name')
             ->prototype('array')
         ;
 
@@ -55,6 +56,7 @@ class Configuration implements ConfigurationInterface
             ->fixXmlConfig('queue')
             ->children()
             ->arrayNode('queues')
+            ->useAttributeAsKey('name')
             ->prototype('array')
         ;
 
@@ -161,10 +163,11 @@ EOF
         $children = $rootNode->children();
 
         /** @var ArrayNodeDefinition $publishers */
-        $publishers = $children->arrayNode('publishers')->prototype('array');
+        $publishers = $children->arrayNode('publishers')->useAttributeAsKey('name')->prototype('array');
         $publishers->addDefaultsIfNotSet();
 
         $publisher = $publishers->children();
+        $publisher->scalarNode('name');
         $publisher
             ->scalarNode('serializer')
             ->defaultValue('@tree_house.queue.serializer.php')
@@ -200,11 +203,13 @@ EOF
         $children = $rootNode->children();
 
         /** @var ArrayNodeDefinition $consumers */
-        $consumers = $children->arrayNode('consumers')->prototype('array');
+        $consumers = $children->arrayNode('consumers')->useAttributeAsKey('name')->prototype('array');
         $consumers->addDefaultsIfNotSet();
 
-        // processor
         $consumer = $consumers->children();
+        $consumer->scalarNode('name');
+
+        // processor
         $consumer
             ->scalarNode('processor')
             ->validate()

@@ -351,6 +351,7 @@ class TreeHouseQueueExtension extends Extension
         $amqpFactory = new Reference('tree_house.amqp.factory');
 
         $connection = $config['connection'] ?: $container->getParameter('tree_house.queue.default_connection');
+        $queueName = $config['name'] ?: $name;
         $channelId = sprintf('tree_house.queue.channel.%s', $connection);
         $arguments = $config['arguments'];
         $autoDeclare = isset($config['auto_declare']) ? $config['auto_declare'] : true;
@@ -364,7 +365,7 @@ class TreeHouseQueueExtension extends Extension
         $definition = new Definition($container->getParameter('tree_house.queue.queue.class'));
         $definition->setFactory([$amqpFactory, 'createQueue']);
         $definition->addArgument(new Reference($channelId));
-        $definition->addArgument($config['name']);
+        $definition->addArgument($queueName);
         $definition->addArgument($this->getQueueFlagsValue($config));
         $definition->addArgument($arguments);
 
