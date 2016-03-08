@@ -84,6 +84,7 @@ class Configuration implements ConfigurationInterface
             ->isRequired()
             ->requiresAtLeastOneElement()
             ->cannotBeEmpty()
+            ->useAttributeAsKey('name')
             ->info('List of connections. The key becomes the connection name.')
             ->example(<<<EOF
 # long
@@ -131,8 +132,12 @@ EOF
                     // string becomes the host
                     if (is_string($conn)) {
                         $conn = [
-                            'host' => $conn
+                            'host' => $conn,
                         ];
+                    }
+
+                    if (!isset($conn['name'])) {
+                        $conn['name'] = $key;
                     }
 
                     $conns[$key] = $conn;
@@ -147,6 +152,7 @@ EOF
         $prototype->addDefaultsIfNotSet();
 
         $connection = $prototype->children();
+        $connection->scalarNode('name');
         $connection->scalarNode('host');
         $connection->scalarNode('port')->defaultValue(5672);
         $connection->scalarNode('user')->defaultValue('guest');
