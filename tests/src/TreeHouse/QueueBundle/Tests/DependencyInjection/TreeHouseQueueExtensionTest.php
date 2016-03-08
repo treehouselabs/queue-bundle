@@ -782,8 +782,8 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
         $this->assertContainerBuilderNotHasService($dlxId);
 
         // assert second exchange and its arguments
-        $exchangeId = 'tree_house.queue.exchange.bar';
-        $this->assertContainerBuilderHasAlias('tree_house.queue.channel.bar', 'tree_house.queue.channel.conn2');
+        $exchangeId = 'tree_house.queue.exchange.foobar';
+        $this->assertContainerBuilderHasAlias('tree_house.queue.channel.foobar', 'tree_house.queue.channel.conn2');
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($exchangeId, 1, 'foobar');
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($exchangeId, 2, ExchangeInterface::TYPE_DELAYED);
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($exchangeId, 3, ExchangeInterface::DURABLE | ExchangeInterface::PASSIVE);
@@ -817,7 +817,7 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
             'tree_house.queue.exchanges',
             [
                 'foo' => 'tree_house.queue.exchange.foo',
-                'bar' => 'tree_house.queue.exchange.bar',
+                'foobar' => 'tree_house.queue.exchange.foobar',
                 'dead_bars' => 'tree_house.queue.exchange.dead_bars',
             ]
         );
