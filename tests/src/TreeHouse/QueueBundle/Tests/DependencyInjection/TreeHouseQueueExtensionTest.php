@@ -816,9 +816,18 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
         $this->assertContainerBuilderHasParameter(
             'tree_house.queue.exchanges',
             [
-                'foo' => 'tree_house.queue.exchange.foo',
-                'foobar' => 'tree_house.queue.exchange.foobar',
-                'dead_bars' => 'tree_house.queue.exchange.dead_bars',
+                'foo' => [
+                    'id' => 'tree_house.queue.exchange.foo',
+                    'auto_declare' => true,
+                ],
+                'foobar' => [
+                    'id' => 'tree_house.queue.exchange.foobar',
+                    'auto_declare' => true,
+                ],
+                'dead_bars' => [
+                    'id' => 'tree_house.queue.exchange.dead_bars',
+                    'auto_declare' => true,
+                ],
             ]
         );
     }
@@ -868,6 +877,7 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
                     'passive' => true,
                     'exclusive' => true,
                     'auto_delete' => true,
+                    'auto_declare' => false,
                     'bindings' => [
                         [
                             'exchange' => 'xchg1',
@@ -908,6 +918,7 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($queueId, 1, 'bar');
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($queueId, 2, QueueInterface::PASSIVE | QueueInterface::EXCLUSIVE | QueueInterface::AUTODELETE);
         $this->assertContainerBuilderHasServiceDefinitionWithArgument($queueId, 3, ['x-dead-letter-exchange' => 'dead_letter_exchange_name']);
+        $this->assertThat($this->container->findDefinition($queueId), $this->logicalNot(new DefinitionHasMethodCallConstraint('declareQueue')));
         $this->assertContainerBuilderHasServiceDefinitionWithMethodCall($queueId, 'bind', ['xchg1', 'foo', ['x-foo' => 'bar']]);
         $this->assertContainerBuilderHasServiceDefinitionWithMethodCall($queueId, 'bind', ['xchg1', 'bar', ['x-foo' => 'bar']]);
         $this->assertContainerBuilderHasServiceDefinitionWithMethodCall($queueId, 'bind', ['xchg2', 'foo', []]);
@@ -916,8 +927,14 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
         $this->assertContainerBuilderHasParameter(
             'tree_house.queue.queues',
             [
-                'foo' => 'tree_house.queue.queue.foo',
-                'bar' => 'tree_house.queue.queue.bar',
+                'foo' => [
+                    'id' => 'tree_house.queue.queue.foo',
+                    'auto_declare' => true,
+                ],
+                'bar' => [
+                    'id' => 'tree_house.queue.queue.bar',
+                    'auto_declare' => false,
+                ],
             ]
         );
     }
