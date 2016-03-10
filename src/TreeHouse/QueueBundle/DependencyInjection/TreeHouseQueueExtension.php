@@ -253,7 +253,10 @@ class TreeHouseQueueExtension extends Extension
         $exchangeId = sprintf('tree_house.queue.exchange.%s', $name);
         $container->setDefinition($exchangeId, $definition);
 
-        $this->exchanges[$name] = $exchangeId;
+        $this->exchanges[$name] = [
+            'id' => $exchangeId,
+            'auto_declare' => $autoDeclare,
+        ];
 
         // optionally create a dead letter exchange counterpart
         if (isset($config['dlx']['enabled']) && $config['dlx']['enabled']) {
@@ -396,7 +399,10 @@ class TreeHouseQueueExtension extends Extension
         $queueId = sprintf('tree_house.queue.queue.%s', $name);
         $container->setDefinition($queueId, $definition);
 
-        $this->queues[$name] = $queueId;
+        $this->queues[$name] = [
+            'id' => $queueId,
+            'auto_declare' => $autoDeclare,
+        ];
 
         return $queueId;
     }

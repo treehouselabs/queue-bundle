@@ -44,8 +44,12 @@ class AmqpCacheWarmer implements CacheWarmerInterface
      */
     private function loadServices($services)
     {
-        foreach ($services as $serviceId) {
-            $this->container->get($serviceId);
+        foreach ($services as $service) {
+            if (false === $service['auto_declare']) {
+                continue;
+            }
+
+            $this->container->get($service['id']);
         }
     }
 }
