@@ -426,6 +426,7 @@ class TreeHouseQueueExtension extends Extension
         // create publisher
         $publisherId = sprintf('tree_house.queue.publisher.%s', $name);
         $publisher = new Definition($container->getParameter('tree_house.queue.publisher.class'));
+        $publisher->setLazy(true);
         $publisher->addArgument(new Reference($exchangeId));
         $publisher->addArgument(new Reference($composerId));
 
