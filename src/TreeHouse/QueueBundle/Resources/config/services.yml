@@ -31,10 +31,6 @@ services:
     arguments:
       - '@doctrine'
 
-  tree_house.queue.event_dispatcher:
-    public: false
-    class: Symfony\Component\EventDispatcher\EventDispatcher
-
   tree_house.queue.event_listener.flush:
     public: true
     class: TreeHouse\QueueBundle\EventListener\FlushListener
