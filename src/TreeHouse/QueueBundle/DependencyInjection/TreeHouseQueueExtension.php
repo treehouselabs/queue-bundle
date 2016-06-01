@@ -332,7 +332,7 @@ class TreeHouseQueueExtension extends Extension
         $definition = new DefinitionDecorator('tree_house.queue.consumer.prototype');
         $definition->addArgument(new Reference($queueId));
         $definition->addArgument(new Reference($processorId));
-        $definition->addArgument(new Reference('tree_house.queue.event_dispatcher'));
+        $definition->addArgument(new Reference('event_dispatcher'));
 
         $consumerId = sprintf('tree_house.queue.consumer.%s', $name);
         $container->setDefinition($consumerId, $definition);
