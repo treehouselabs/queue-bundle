@@ -186,6 +186,7 @@ class TreeHouseQueueExtension extends Extension
         $definition->addArgument($config['user']);
         $definition->addArgument($config['pass']);
         $definition->addArgument($config['vhost']);
+        $definition->addArgument($config['params']);
 
         $connectionId = sprintf('tree_house.queue.connection.%s', $name);
         $container->setDefinition($connectionId, $definition);

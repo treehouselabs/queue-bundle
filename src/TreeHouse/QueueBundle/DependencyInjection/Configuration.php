@@ -154,10 +154,16 @@ EOF
         $connection = $prototype->children();
         $connection->scalarNode('name');
         $connection->scalarNode('host');
-        $connection->scalarNode('port')->defaultValue(5672);
+        $connection->integerNode('port')->defaultValue(5672);
         $connection->scalarNode('user')->defaultValue('guest');
         $connection->scalarNode('pass')->defaultValue('guest');
         $connection->scalarNode('vhost')->defaultValue('/');
+
+        $params = $connection->arrayNode('params');
+        $params->prototype('scalar');
+        $params->defaultValue([
+            'heartbeat' => 60
+        ]);
     }
 
     /**

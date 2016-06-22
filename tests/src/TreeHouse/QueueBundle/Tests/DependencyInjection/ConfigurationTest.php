@@ -48,6 +48,9 @@ class ConfigurationTest extends AbstractExtensionConfigurationTestCase
                     'user' => 'guest',
                     'pass' => 'guest',
                     'vhost' => '/',
+                    'params' => [
+                        'heartbeat' => 60
+                    ],
                 ],
             ]],
             ['connection2', [
@@ -57,6 +60,9 @@ class ConfigurationTest extends AbstractExtensionConfigurationTestCase
                     'user' => 'guest',
                     'pass' => 'guest',
                     'vhost' => '/',
+                    'params' => [
+                        'heartbeat' => 60
+                    ],
                 ],
             ]],
             ['connection3', [
@@ -66,6 +72,9 @@ class ConfigurationTest extends AbstractExtensionConfigurationTestCase
                     'user' => 'guest',
                     'pass' => 'guest',
                     'vhost' => '/',
+                    'params' => [
+                        'heartbeat' => 60
+                    ],
                 ],
                 'conn2' => [
                     'host' => 'rabbitmqhost',
@@ -73,6 +82,9 @@ class ConfigurationTest extends AbstractExtensionConfigurationTestCase
                     'user' => 'guest',
                     'pass' => 'guest',
                     'vhost' => '/',
+                    'params' => [
+                        'heartbeat' => 60
+                    ],
                 ],
             ]],
             ['connection4', [
@@ -82,6 +94,9 @@ class ConfigurationTest extends AbstractExtensionConfigurationTestCase
                     'user' => 'guest',
                     'pass' => 'guest',
                     'vhost' => '/',
+                    'params' => [
+                        'heartbeat' => 60
+                    ],
                 ],
                 'conn2' => [
                     'host' => 'rabbitmqhost',
@@ -89,6 +104,9 @@ class ConfigurationTest extends AbstractExtensionConfigurationTestCase
                     'user' => 'guest',
                     'pass' => 'guest',
                     'vhost' => '/',
+                    'params' => [
+                        'heartbeat' => 40
+                    ],
                 ],
             ]],
         ];
