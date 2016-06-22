@@ -17,12 +17,13 @@ For a complete list of releases, see the [releases page][0].
 * Added configuration to automatically create dead letter exchanges
 * Improved exception handling and graceful shutdowns in `queue:consume` command
 * Added option to enable/disable auto_declare exchange/queue (default true)
+* Added support to configure connection parameters
 
 
 ### Breaking changes
 * Updated required PHP version to 5.6
 * Updated required Symfony version to 2.7 (LTS)
-* Updated `treehouselabs/queue` dependency to `0.2.0`. See those [release notes](https://github.com/treehouselabs/queue-bundle/releases/tag/v0.2.0)
+* Updated `treehouselabs/queue` dependency to `0.2.0`. See those [release notes](https://github.com/treehouselabs/queue/releases/tag/v0.2.0)
   for an overview of breaking changes.
 * Renamed `tree_house.queue.event_listener.queue` to `tree_house.queue.event_listener.flush`
 * Replaced `attempts` config in consumers with a more extended `retry` config:
