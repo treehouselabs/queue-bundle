@@ -2,12 +2,28 @@
 
 namespace TreeHouse\QueueBundle\Command;
 
-use Symfony\Bundle\FrameworkBundle\Command\ContainerAwareCommand;
+use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use TreeHouse\QueueBundle\CacheWarmer\AmqpCacheWarmer;
 
-class QueueDeclareCommand extends ContainerAwareCommand
+class QueueDeclareCommand extends Command
 {
+    /**
+     * @var AmqpCacheWarmer
+     */
+    private $cacheWarmer;
+
+    /**
+     * @param AmqpCacheWarmer $cacheWarmer
+     */
+    public function __construct(AmqpCacheWarmer $cacheWarmer)
+    {
+        parent::__construct();
+
+        $this->cacheWarmer = $cacheWarmer;
+    }
+
     /**
      * @inheritdoc
      */
@@ -27,8 +43,7 @@ HELP
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        $warmer = $this->getContainer()->get('tree_house.queue.cache.warmer.amqp');
-        $warmer->warmUp('');
+        $this->cacheWarmer->warmUp('');
 
         $output->writeln('<info>All exchanges and queues are declared</info>');
     }
