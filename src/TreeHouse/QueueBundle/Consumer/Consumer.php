@@ -68,6 +68,8 @@ class Consumer implements EventSubscriberInterface
         $this->consumer = $consumer;
         $this->output = $output;
         $this->consumerTag = $consumerTag;
+
+        $this->consumer->getEventDispatcher()->addSubscriber($this);
     }
 
     /**
@@ -155,8 +157,6 @@ class Consumer implements EventSubscriberInterface
      */
     public function consume()
     {
-        $this->consumer->getEventDispatcher()->addSubscriber($this);
-
         $this->startTime = time();
 
         try {
