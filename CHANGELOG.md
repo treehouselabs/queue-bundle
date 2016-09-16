@@ -7,6 +7,13 @@ For a complete list of releases, see the [releases page][0].
 [0]: https://github.com/treehouselabs/queue-bundle/releases
 
 
+## v0.2.0
+
+### Changes
+* Moved limiting logic from consume command to limiter classes
+* Moved most consuming logic from command to decorating Consumer class
+
+
 ## v0.1.0
 
 ### Changes
