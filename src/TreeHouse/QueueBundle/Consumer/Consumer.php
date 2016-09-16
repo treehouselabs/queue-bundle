@@ -77,6 +77,7 @@ class Consumer implements EventSubscriberInterface
     {
         return [
             QueueEvents::CONSUME_MESSAGE => 'onConsumeMessage',
+            QueueEvents::CONSUMED_MESSAGE => 'onMessageConsumed',
             QueueEvents::CONSUME_EXCEPTION => 'onConsumeException',
         ];
     }
