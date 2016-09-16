@@ -16,7 +16,7 @@
     "psr/log": "^1.0",
     "symfony/symfony": "^2.7|^3.0",
     "doctrine/orm": "^2.3",
-    "treehouselabs/queue": "^0.2"
+    "treehouselabs/queue": "^0.3"
   },
   "require-dev": {
     "ext-amqp": "^1.7",
