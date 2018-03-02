@@ -50,10 +50,28 @@ services:
     tags:
       - { name: 'kernel.cache_warmer' }
 
+  tree_house.queue.command.queue.clear:
+    public: true
+    class: TreeHouse\QueueBundle\Command\QueueClearCommand
+    tags:
+      - { name: 'console.command' }
+
+  tree_house.queue.command.queue.clear:
+    public: true
+    class: TreeHouse\QueueBundle\Command\QueueConsumeCommand
+    tags:
+      - { name: 'console.command' }
+
   tree_house.queue.command.queue.declare:
     public: true
     class: TreeHouse\QueueBundle\Command\QueueDeclareCommand
     arguments:
       - '@tree_house.queue.cache.warmer.amqp'
+    tags:
+      - { name: 'console.command' }
+
+  tree_house.queue.command.queue.publish:
+    public: true
+    class: TreeHouse\QueueBundle\Command\QueuePublishCommand
     tags:
       - { name: 'console.command' }
