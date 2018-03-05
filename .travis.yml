@@ -12,7 +12,6 @@ language: php
 
 php:
   - 7.1
-  - hhvm
 
 matrix:
   fast_finish: true
@@ -23,8 +22,6 @@ matrix:
       env: SYMFONY_VERSION=2.8.*
     - php: 7.1
       env: SYMFONY_VERSION=3.4.*
-  allow_failures:
-    - php: hhvm
 
 install: travis_retry ./tests/travis/install.sh
 

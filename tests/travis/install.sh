@@ -9,7 +9,8 @@ sudo dpkg -i librabbitmq4_0.7.1-1_amd64.deb
 wget http://nz.archive.ubuntu.com/ubuntu/pool/universe/libr/librabbitmq/librabbitmq-dev_0.7.1-1_amd64.deb
 sudo dpkg -i librabbitmq-dev_0.7.1-1_amd64.deb
 
-if [[ "$TRAVIS_PHP_VERSION" != "hhvm" ]]; then sudo apt-get install php-pear && echo yes | pecl install amqp-1.7.0alpha2; fi;
+sudo apt-get install php-pear
+echo yes | pecl install amqp-1.7.0alpha2
 
 composer self-update
 
