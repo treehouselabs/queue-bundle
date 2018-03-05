@@ -6,7 +6,7 @@ For a complete list of releases, see the [releases page][0].
 
 [0]: https://github.com/treehouselabs/queue-bundle/releases
 
-## v0.3.0
+## v1.0.0
 
 ### Changes
 Prepare for symfony 4.0, no deprecations in symfony 3.4
