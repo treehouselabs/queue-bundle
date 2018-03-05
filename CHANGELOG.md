@@ -6,6 +6,14 @@ For a complete list of releases, see the [releases page][0].
 
 [0]: https://github.com/treehouselabs/queue-bundle/releases
 
+## v0.3.0
+
+### Changes
+Prepare for symfony 4.0, no deprecations in symfony 3.4
+
+* Commands are explicitly registered
+* Minimum php version has been raised to 7.1
+* Travis script has been updated for the new trusty images on travis
 
 ## v0.2.0
 

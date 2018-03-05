@@ -20,10 +20,8 @@ composer require treehouselabs/queue-bundle
 ## Documentation
 
 1. [Setup][doc-setup]
-2. [Lazy services][lazy-services]
 
 [doc-setup]: /docs/01-setup.md
-[lazy-services]: /docs/02-lazy-services.md
 
 ## Security
 
