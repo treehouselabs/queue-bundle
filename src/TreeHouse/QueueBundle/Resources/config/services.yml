@@ -56,7 +56,7 @@ services:
     tags:
       - { name: 'console.command' }
 
-  tree_house.queue.command.queue.clear:
+  tree_house.queue.command.queue.consume:
     public: true
     class: TreeHouse\QueueBundle\Command\QueueConsumeCommand
     tags:
