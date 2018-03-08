@@ -83,7 +83,6 @@ class Configuration implements ConfigurationInterface
             ->arrayNode('connections')
             ->isRequired()
             ->requiresAtLeastOneElement()
-            ->cannotBeEmpty()
             ->useAttributeAsKey('name')
             ->info('List of connections. The key becomes the connection name.')
             ->example(<<<EOF
