@@ -3,6 +3,8 @@
 namespace TreeHouse\QueueBundle\Tests\DependencyInjection;
 
 use Matthias\SymfonyDependencyInjectionTest\PhpUnit\AbstractExtensionConfigurationTestCase;
+use Symfony\Component\Config\Definition\ConfigurationInterface;
+use Symfony\Component\DependencyInjection\Extension\ExtensionInterface;
 use TreeHouse\QueueBundle\DependencyInjection\Configuration;
 use TreeHouse\QueueBundle\DependencyInjection\TreeHouseQueueExtension;
 
@@ -115,7 +117,7 @@ class ConfigurationTest extends AbstractExtensionConfigurationTestCase
     /**
      * @inheritdoc
      */
-    protected function getContainerExtension()
+    protected function getContainerExtension(): ExtensionInterface
     {
         return new TreeHouseQueueExtension();
     }
@@ -123,7 +125,7 @@ class ConfigurationTest extends AbstractExtensionConfigurationTestCase
     /**
      * @inheritdoc
      */
-    protected function getConfiguration()
+    protected function getConfiguration(): ConfigurationInterface
     {
         return new Configuration();
     }

@@ -2,8 +2,10 @@
 
 namespace TreeHouse\QueueBundle\Tests\DependencyInjection;
 
+use LogicException;
 use Matthias\SymfonyDependencyInjectionTest\PhpUnit\AbstractExtensionTestCase;
 use Matthias\SymfonyDependencyInjectionTest\PhpUnit\DefinitionHasMethodCallConstraint;
+use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Reference;
@@ -16,10 +18,18 @@ use TreeHouse\QueueBundle\DependencyInjection\TreeHouseQueueExtension;
 
 class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
 {
+    private const CONNECTIONS_CONFIG = [
+        'connections' => [
+            'conn1' => [
+                'host' => 'localhost',
+            ],
+        ],
+    ];
+
     /**
      * @inheritdoc
      */
-    protected function setUp()
+    protected function setUp(): void
     {
         if (!extension_loaded('amqp')) {
             $this->markTestSkipped('AMQP extension not loaded');
@@ -33,9 +43,11 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
      */
     public function driver_parameters_are_set_up_correctly()
     {
-        $this->load([
+        $config = [
             'driver' => 'amqp',
-        ]);
+        ];
+
+        $this->load($config = array_merge(self::CONNECTIONS_CONFIG, $config));
 
         $this->assertContainerBuilderHasParameter('tree_house.queue.driver', 'amqp');
         $this->assertContainerBuilderHasAlias('tree_house.amqp.factory', 'tree_house.queue.driver.amqp.factory');
@@ -55,7 +67,7 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
         $publisherClass = 'foo\\bar\\baz';
 
         $this->setParameter('tree_house.queue.publisher.class', $publisherClass);
-        $this->load();
+        $this->load(self::CONNECTIONS_CONFIG);
 
         $this->assertContainerBuilderHasParameter('tree_house.queue.publisher.class', $publisherClass);
     }
@@ -65,9 +77,11 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
      */
     public function it_should_remove_flush_listener_when_auto_flush_is_disabled()
     {
-        $this->load([
+        $config = [
             'auto_flush' => false,
-        ]);
+        ];
+
+        $this->load($config = array_merge(self::CONNECTIONS_CONFIG, $config));
 
         $this->assertContainerBuilderNotHasService('tree_house.queue.event_listener.queue');
     }
@@ -96,7 +110,7 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
             ],
         ];
 
-        $this->load($config);
+        $this->load($config = array_merge(self::CONNECTIONS_CONFIG, $config));
 
         // assert that both connections are created properly
         foreach (range(1, 2) as $num) {
@@ -172,7 +186,7 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
             ],
         ];
 
-        $this->load($config);
+        $this->load($config = array_merge(self::CONNECTIONS_CONFIG, $config));
 
         $this->assertContainerBuilderHasAlias(
             'tree_house.queue.default_connection',
@@ -182,8 +196,6 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
 
     /**
      * @test
-     * @expectedException \LogicException
-     * @expectedExceptionMessage Connection "tree_house.queue.connection.foo" does not exist
      */
     public function it_throws_an_exception_on_missing_default_connection()
     {
@@ -200,7 +212,10 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
             ],
         ];
 
-        $this->load($config);
+        $this->expectExceptionMessage('Connection "tree_house.queue.connection.foo" does not exist');
+        $this->expectException(LogicException::class);
+
+        $this->load($config = array_merge(self::CONNECTIONS_CONFIG, $config));
     }
 
     /**
@@ -215,7 +230,7 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
             ],
         ];
 
-        $this->load($config);
+        $this->load($config = array_merge(self::CONNECTIONS_CONFIG, $config));
 
         // assert channel
         $channelId = 'tree_house.queue.channel.process2';
@@ -270,13 +285,15 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
      */
     public function it_should_create_publisher_with_different_serializer()
     {
-        $this->load([
+        $config = [
             'publishers' => [
                 'process2' => [
                     'serializer' => 'json',
                 ],
             ],
-        ]);
+        ];
+
+        $this->load($config = array_merge(self::CONNECTIONS_CONFIG, $config));
 
         $serializerId = 'tree_house.queue.serializer.process2';
         $this->assertContainerBuilderHasAlias($serializerId, 'tree_house.queue.serializer.json');
@@ -287,13 +304,15 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
      */
     public function it_should_create_publisher_with_custom_serializer()
     {
-        $this->load([
+        $config = [
             'publishers' => [
                 'process2' => [
                     'serializer' => 'My\\Serializer',
                 ],
             ],
-        ]);
+        ];
+
+        $this->load($config = array_merge(self::CONNECTIONS_CONFIG, $config));
 
         $this->assertContainerBuilderHasService('tree_house.queue.serializer.process2', 'My\\Serializer');
     }
@@ -304,13 +323,15 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
     public function it_should_create_publisher_with_serializer_service()
     {
         $this->registerService('my_serializer', 'My\\Serializer');
-        $this->load([
+        $config = [
             'publishers' => [
                 'process2' => [
                     'serializer' => '@my_serializer',
                 ],
             ],
-        ]);
+        ];
+
+        $this->load($config = array_merge(self::CONNECTIONS_CONFIG, $config));
 
         $this->assertContainerBuilderHasAlias('tree_house.queue.serializer.process2', 'my_serializer');
     }
@@ -321,13 +342,15 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
     public function it_should_create_publisher_with_composer_service()
     {
         $this->registerService('my_composer', 'My\\Composer');
-        $this->load([
+        $config = [
             'publishers' => [
                 'process2' => [
                     'composer' => '@my_composer',
                 ],
             ],
-        ]);
+        ];
+
+        $this->load($config = array_merge(self::CONNECTIONS_CONFIG, $config));
 
         $this->assertContainerBuilderHasAlias('tree_house.queue.composer.process2', 'my_composer');
     }
@@ -338,13 +361,15 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
     public function it_should_create_publisher_with_custom_composer()
     {
         $this->setParameter('my.composer.class', 'My\\Composer');
-        $this->load([
+        $config = [
             'publishers' => [
                 'process2' => [
                     'composer' => '%my.composer.class%',
                 ],
             ],
-        ]);
+        ];
+
+        $this->load($config = array_merge(self::CONNECTIONS_CONFIG, $config));
 
         $this->assertContainerBuilderHasService('tree_house.queue.composer.process2', 'My\\Composer');
         $this->assertContainerBuilderHasServiceDefinitionWithArgument(
@@ -360,7 +385,7 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
     public function it_should_create_publisher_with_custom_exchange()
     {
         $this->setParameter('my.composer.class', 'My\\Composer');
-        $this->load([
+        $config = [
             'publishers' => [
                 'process2' => [
                     'exchange' => [
@@ -379,7 +404,9 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
                     ],
                 ],
             ],
-        ]);
+        ];
+
+        $this->load($config = array_merge(self::CONNECTIONS_CONFIG, $config));
 
         $exchangeId = 'tree_house.queue.exchange.process2';
         $this->assertContainerBuilderHasAlias('tree_house.queue.channel.process2', 'tree_house.queue.channel.conn2');
@@ -415,7 +442,7 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
             ],
         ];
 
-        $this->load($config);
+        $this->load($config = array_merge(self::CONNECTIONS_CONFIG, $config));
 
         // assert channel
         $channelId = 'tree_house.queue.channel.process2';
@@ -448,7 +475,7 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
             ],
         ];
 
-        $this->load($config);
+        $this->load($config = array_merge(self::CONNECTIONS_CONFIG, $config));
 
         // assert queue and its arguments
         $queueId = 'tree_house.queue.queue.process2';
@@ -496,7 +523,7 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
             ],
         ];
 
-        $this->load($config);
+        $this->load($config = array_merge(self::CONNECTIONS_CONFIG, $config));
 
         // assert queue and its arguments
         $queueId = 'tree_house.queue.queue.process1';
@@ -538,7 +565,7 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
             ],
         ];
 
-        $this->load($config);
+        $this->load($config = array_merge(self::CONNECTIONS_CONFIG, $config));
 
         // assert queue and its arguments
         $queueId = 'tree_house.queue.queue.process2';
@@ -567,7 +594,7 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
             ],
         ];
 
-        $this->load($config);
+        $this->load($config = array_merge(self::CONNECTIONS_CONFIG, $config));
 
         $processorId = 'tree_house.queue.processor.process2';
         $this->assertContainerBuilderHasAlias($processorId, 'my_processor');
@@ -590,7 +617,7 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
             ],
         ];
 
-        $this->load($config);
+        $this->load($config = array_merge(self::CONNECTIONS_CONFIG, $config));
 
         $processorId = 'tree_house.queue.processor.process2';
         $this->assertContainerBuilderHasService($processorId, RetryProcessor::class);
@@ -617,7 +644,7 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
             ],
         ];
 
-        $this->load($config);
+        $this->load($config = array_merge(self::CONNECTIONS_CONFIG, $config));
 
         $processorId = 'tree_house.queue.processor.process2';
         $this->assertContainerBuilderHasService($processorId, RetryProcessor::class);
@@ -646,7 +673,7 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
             ],
         ];
 
-        $this->load($config);
+        $this->load($config = array_merge(self::CONNECTIONS_CONFIG, $config));
 
         $strategy = new Definition(BackoffStrategy::class);
         $strategy->addArgument(new Reference('tree_house.queue.publisher.foo'));
@@ -676,7 +703,7 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
             ],
         ];
 
-        $this->load($config);
+        $this->load($config = array_merge(self::CONNECTIONS_CONFIG, $config));
 
         $strategy = new Definition(DeprioritizeStrategy::class);
         $strategy->addArgument(new Reference('tree_house.queue.publisher.process2'));
@@ -708,7 +735,7 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
             ],
         ];
 
-        $this->load($config);
+        $this->load($config = array_merge(self::CONNECTIONS_CONFIG, $config));
 
         $strategy = new Definition(DeprioritizeStrategy::class);
         $strategy->addArgument(new Reference('tree_house.queue.publisher.process2'));
@@ -720,7 +747,6 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
 
     /**
      * @test
-     * @expectedException \Symfony\Component\Config\Definition\Exception\InvalidConfigurationException
      */
     public function it_throws_an_exception_on_unsupported_strategy()
     {
@@ -739,7 +765,9 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
             ],
         ];
 
-        $this->load($config);
+        $this->expectException(InvalidConfigurationException::class);
+
+        $this->load($config = array_merge(self::CONNECTIONS_CONFIG, $config));
     }
 
     /**
@@ -747,7 +775,7 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
      */
     public function it_should_create_exchange_definitions()
     {
-        $this->load([
+        $config = [
             'exchanges' => [
                 'foo' => [
                     'dlx' => false
@@ -766,7 +794,9 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
                     ]
                 ],
             ],
-        ]);
+        ];
+
+        $this->load($config = array_merge(self::CONNECTIONS_CONFIG, $config));
 
         // assert first exchange (defaults)
         $exchangeId = 'tree_house.queue.exchange.foo';
@@ -845,7 +875,7 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
             ],
         ];
 
-        $this->load($config);
+        $this->load($config = array_merge(self::CONNECTIONS_CONFIG, $config));
 
         $exchangeId = 'tree_house.queue.exchange.foo';
         $definition = $this->container->findDefinition($exchangeId);
@@ -899,7 +929,7 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
             ],
         ];
 
-        $this->load($config);
+        $this->load($config = array_merge(self::CONNECTIONS_CONFIG, $config));
 
         // assert queue 1
         $queueId = 'tree_house.queue.queue.foo';
@@ -952,7 +982,7 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
             ],
         ];
 
-        $this->load($config);
+        $this->load($config = array_merge(self::CONNECTIONS_CONFIG, $config));
 
         $queueId = 'tree_house.queue.queue.foo';
         $this->assertContainerBuilderHasService($queueId);
@@ -972,7 +1002,7 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
             ],
         ];
 
-        $this->load($config);
+        $this->load($config = array_merge(self::CONNECTIONS_CONFIG, $config));
 
         $queueId = 'tree_house.queue.queue.foo';
         $definition = $this->container->findDefinition($queueId);
@@ -982,24 +1012,7 @@ class TreeHouseQueueExtensionTest extends AbstractExtensionTestCase
     /**
      * @inheritdoc
      */
-    protected function load(array $config = [])
-    {
-        parent::load(array_merge(
-            [
-                'connections' => [
-                    'conn1' => [
-                        'host' => 'localhost',
-                    ],
-                ],
-            ],
-            $config
-        ));
-    }
-
-    /**
-     * @inheritdoc
-     */
-    protected function getContainerExtensions()
+    protected function getContainerExtensions(): array
     {
         return [new TreeHouseQueueExtension()];
     }

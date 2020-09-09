@@ -15,9 +15,11 @@ class Configuration implements ConfigurationInterface
      */
     public function getConfigTreeBuilder()
     {
-        $treeBuilder = new TreeBuilder();
-        $rootNode = $treeBuilder->root('tree_house_queue');
+        $treeBuilder = new TreeBuilder('tree_house_queue');
+        $rootNode = $treeBuilder->getRootNode();
         $children = $rootNode->children();
+
+        $this->addConnectionsSection($rootNode);
 
         $children
             ->enumNode('driver')
@@ -36,7 +38,7 @@ class Configuration implements ConfigurationInterface
             ->info('Whether to automatically flush the Doctrine object manager when processing messages')
         ;
 
-        $this->addConnectionsSection($rootNode);
+
         $this->addPublishersSection($rootNode);
         $this->addConsumersSection($rootNode);
 

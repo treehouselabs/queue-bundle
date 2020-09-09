@@ -2,12 +2,12 @@
 
 namespace TreeHouse\QueueBundle\Tests\Consumer\Limiter;
 
-use Mockery as Mock;
+use PHPUnit\Framework\TestCase;
 use TreeHouse\QueueBundle\Consumer\Consumer;
 use TreeHouse\QueueBundle\Consumer\Limiter\LimitReachedException;
 use TreeHouse\QueueBundle\Consumer\Limiter\MemoryLimiter;
 
-class MemoryLimiterTest extends \PHPUnit_Framework_TestCase
+class MemoryLimiterTest extends TestCase
 {
     /**
      * @test
@@ -15,11 +15,13 @@ class MemoryLimiterTest extends \PHPUnit_Framework_TestCase
     public function it_can_reach_a_limit()
     {
         $limiter = new MemoryLimiter(1);
-        $consumer = Mock::mock(Consumer::class);
+
+        /** @var Consumer $consumer */
+        $consumer = $this->prophesize(Consumer::class);
 
         $this->expectException(LimitReachedException::class);
 
-        $limiter->limitReached($consumer);
+        $limiter->limitReached($consumer->reveal());
     }
 
     /**
@@ -28,10 +30,10 @@ class MemoryLimiterTest extends \PHPUnit_Framework_TestCase
     public function it_must_reach_a_limit()
     {
         $limiter = new MemoryLimiter(PHP_INT_MAX);
-        $consumer = Mock::mock(Consumer::class);
 
-        $this->assertNull(
-            $limiter->limitReached($consumer)
-        );
+        /** @var Consumer $consumer */
+        $consumer = $this->prophesize(Consumer::class);
+
+        $this->assertNull($limiter->limitReached($consumer->reveal()));
     }
 }

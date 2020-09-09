@@ -2,21 +2,22 @@
 
 namespace TreeHouse\QueueBundle\Tests\Flusher;
 
-use Doctrine\Common\Persistence\ManagerRegistry;
-use Doctrine\Common\Persistence\ObjectManager;
-use Mockery\MockInterface;
+use Doctrine\Persistence\ManagerRegistry;
+use Doctrine\Persistence\ObjectManager;
+use PHPUnit\Framework\TestCase;
 use TreeHouse\QueueBundle\Flusher\DoctrineFlusher;
 use TreeHouse\QueueBundle\Flusher\FlushingInterface;
 
-class DoctrineFlusherTest extends \PHPUnit_Framework_TestCase
+class DoctrineFlusherTest extends TestCase
 {
     /**
      * @test
      */
     public function it_can_be_constructed()
     {
-        $doctrine = $this->createDoctrineMock();
-        $flusher = new DoctrineFlusher($doctrine);
+        /** @var ManagerRegistry $doctrine */
+        $doctrine = $this->prophesize(ManagerRegistry::class);
+        $flusher = new DoctrineFlusher($doctrine->reveal());
 
         $this->assertInstanceOf(FlushingInterface::class, $flusher);
     }
@@ -26,21 +27,15 @@ class DoctrineFlusherTest extends \PHPUnit_Framework_TestCase
      */
     public function it_can_flush_changes()
     {
-        $manager = \Mockery::mock(ObjectManager::class);
-        $manager->shouldReceive('flush')->once();
+        /** @var ObjectManager $manager */
+        $manager = $this->prophesize(ObjectManager::class);
+        $manager->flush()->shouldBeCalledOnce();
 
-        $doctrine = $this->createDoctrineMock();
-        $doctrine->shouldReceive('getManager')->andReturn($manager);
+        /** @var ManagerRegistry $doctrine */
+        $doctrine = $this->prophesize(ManagerRegistry::class);
+        $doctrine->getManager()->willReturn($manager->reveal());
 
-        $flusher = new DoctrineFlusher($doctrine);
+        $flusher = new DoctrineFlusher($doctrine->reveal());
         $flusher->flush();
-    }
-
-    /**
-     * @return MockInterface|ManagerRegistry
-     */
-    private function createDoctrineMock()
-    {
-        return \Mockery::mock(ManagerRegistry::class);
     }
 }

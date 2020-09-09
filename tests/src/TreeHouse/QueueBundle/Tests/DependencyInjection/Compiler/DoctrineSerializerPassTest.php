@@ -2,7 +2,7 @@
 
 namespace TreeHouse\QueueBundle\Tests\DependencyInjection\Compiler;
 
-use Doctrine\Common\Persistence\ManagerRegistry;
+use Doctrine\Persistence\ManagerRegistry;
 use Matthias\SymfonyDependencyInjectionTest\PhpUnit\AbstractCompilerPassTestCase;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use TreeHouse\Queue\Message\Serializer\DoctrineSerializer;
@@ -36,7 +36,7 @@ class DoctrineSerializerPassTest extends AbstractCompilerPassTestCase
     /**
      * @inheritdoc
      */
-    protected function registerCompilerPass(ContainerBuilder $container)
+    protected function registerCompilerPass(ContainerBuilder $container): void
     {
         $container->addCompilerPass(new DoctrineSerializerPass());
     }

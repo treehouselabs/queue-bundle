@@ -2,7 +2,7 @@
 
 namespace TreeHouse\QueueBundle\Flusher;
 
-use Doctrine\Common\Persistence\ManagerRegistry;
+use Doctrine\Persistence\ManagerRegistry;
 
 class DoctrineFlusher implements FlushingInterface
 {

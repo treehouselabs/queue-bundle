@@ -2,9 +2,9 @@
 
 namespace TreeHouse\QueueBundle\DependencyInjection\Compiler;
 
+use Symfony\Component\DependencyInjection\ChildDefinition;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
-use Symfony\Component\DependencyInjection\DefinitionDecorator;
 use Symfony\Component\DependencyInjection\Reference;
 
 class RegisterFlushersPass implements CompilerPassInterface
@@ -24,7 +24,7 @@ class RegisterFlushersPass implements CompilerPassInterface
             if ($container->hasDefinition($id)) {
                 $flusherId = sprintf('tree_house.queue.flusher.%s', $id);
 
-                $definition = new DefinitionDecorator('tree_house.queue.flusher.doctrine_abstract');
+                $definition = new ChildDefinition('tree_house.queue.flusher.doctrine_abstract');
                 $definition->addArgument(new Reference($id));
                 $container->setDefinition($flusherId, $definition);
 
@@ -32,7 +32,7 @@ class RegisterFlushersPass implements CompilerPassInterface
             }
         }
 
-        foreach ($container->findTaggedServiceIds('tree_house.queue.flusher') as $id => list($tag)) {
+        foreach ($container->findTaggedServiceIds('tree_house.queue.flusher') as $id => [$tag]) {
             $listener->addMethodCall('addFlusher', [new Reference($id)]);
         }
     }

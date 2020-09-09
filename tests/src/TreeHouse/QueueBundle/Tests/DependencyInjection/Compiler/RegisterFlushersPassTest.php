@@ -2,7 +2,7 @@
 
 namespace TreeHouse\QueueBundle\Tests\DependencyInjection\Compiler;
 
-use Doctrine\Common\Persistence\ManagerRegistry;
+use Doctrine\Persistence\ManagerRegistry;
 use Matthias\SymfonyDependencyInjectionTest\PhpUnit\AbstractCompilerPassTestCase;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
@@ -70,7 +70,7 @@ class RegisterFlushersPassTest extends AbstractCompilerPassTestCase
     /**
      * @inheritdoc
      */
-    protected function registerCompilerPass(ContainerBuilder $container)
+    protected function registerCompilerPass(ContainerBuilder $container): void
     {
         $container->addCompilerPass(new RegisterFlushersPass());
     }
