@@ -187,6 +187,7 @@ class TreeHouseQueueExtension extends Extension
         $definition->addArgument($config['pass']);
         $definition->addArgument($config['vhost']);
         $definition->addArgument($config['params']);
+        $definition->setPublic(true);
 
         $connectionId = sprintf('tree_house.queue.connection.%s', $name);
         $container->setDefinition($connectionId, $definition);
@@ -246,6 +247,7 @@ class TreeHouseQueueExtension extends Extension
         $definition->addArgument($exchangeType);
         $definition->addArgument($exchangeFlags);
         $definition->addArgument($exchangeArguments);
+        $definition->setPublic(true);
 
         if ($autoDeclare) {
             $definition->addMethodCall('declareExchange');
@@ -334,6 +336,7 @@ class TreeHouseQueueExtension extends Extension
         $definition->addArgument(new Reference($queueId));
         $definition->addArgument(new Reference($processorId));
         $definition->addArgument(new Reference('event_dispatcher'));
+        $definition->setPublic(true);
 
         $consumerId = sprintf('tree_house.queue.consumer.%s', $name);
         $container->setDefinition($consumerId, $definition);
@@ -372,6 +375,7 @@ class TreeHouseQueueExtension extends Extension
         $definition->addArgument($queueName);
         $definition->addArgument($this->getQueueFlagsValue($config));
         $definition->addArgument($arguments);
+        $definition->setPublic(true);
 
         if ($autoDeclare) {
             $definition->addMethodCall('declareQueue');
@@ -430,6 +434,7 @@ class TreeHouseQueueExtension extends Extension
         $publisher->setLazy(true);
         $publisher->addArgument(new Reference($exchangeId));
         $publisher->addArgument(new Reference($composerId));
+        $publisher->setPublic(true);
 
         $container->setDefinition($publisherId, $publisher);
 
@@ -464,6 +469,7 @@ class TreeHouseQueueExtension extends Extension
 
             $composerDef = new Definition($composer);
             $composerDef->addArgument(new Reference($serializerId));
+            $composerDef->setPublic(true);
             $container->setDefinition($composerId, $composerDef);
         }
 
@@ -488,6 +494,7 @@ class TreeHouseQueueExtension extends Extension
             return $serializerId;
         } else {
             $serializer = new Definition($serializerClass);
+            $serializer->setPublic(true);
             $container->setDefinition($serializerId, $serializer);
 
             return $serializerId;
@@ -554,6 +561,7 @@ class TreeHouseQueueExtension extends Extension
         $retry->addArgument(is_string($strategy) ? new Reference($strategy) : $strategy);
         $retry->addArgument(new Reference('logger', ContainerInterface::NULL_ON_INVALID_REFERENCE));
         $retry->addMethodCall('setMaxAttempts', [$config['attempts']]);
+        $retry->setPublic(true);
 
         return $retry;
     }
