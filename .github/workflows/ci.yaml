@@ -2,7 +2,6 @@
 name: Continuous Integration
 
 on:
-  workflow_dispatch:
   pull_request:
     branches:
     - master
@@ -21,15 +20,18 @@ jobs:
         image: rabbitmq:latest
         ports:
         - 5672/tcp
-        options: --health-cmd "rabbitmqctl node_health_check" --health-interval 10s --health-timeout 5s --health-retries 5
 
     steps:
       - uses: actions/checkout@v2
 
-      - name: Set default PHP version
-        run: |
-          sudo update-alternatives --set php /usr/bin/php${{ matrix.php }}
-          pecl install amqp
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          tools: pecl
+          extensions: amqp
+        env:
+          fail-fast: true
 
       - name: Get Composer Cache Directory
         id: composer-cache-dir
