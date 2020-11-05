@@ -13,8 +13,11 @@ jobs:
 
     strategy:
       matrix:
-        php: ['7.1', '7.3', '7.4']
+        php: ['7.1', '7.2', '7.3', '7.4']
         symfony: ['^4.0', '^5.0']
+        exclude:
+          - php: '7.1'
+            symfony: '^5.0'
 
     services:
       rabbitmq:
